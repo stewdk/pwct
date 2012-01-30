@@ -31,56 +31,56 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 LSS += \
-remote.lss \
+Remote.lss \
 
 FLASH_IMAGE += \
-remote.hex \
+Remote.hex \
 
 EEPROM_IMAGE += \
-remote.eep \
+Remote.eep \
 
 SIZEDUMMY += \
 sizedummy \
 
 
 # All Target
-all: remote.elf secondary-outputs
+all: Remote.elf secondary-outputs
 
 # Tool invocations
-remote.elf: $(OBJS) $(USER_OBJS)
+Remote.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: AVR C Linker'
-	avr-gcc -Wl,-Map,remote.map -mmcu=attiny261 -o "remote.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	avr-gcc -Wl,-Map,Remote.map -mmcu=attiny461 -o "Remote.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-remote.lss: remote.elf
+Remote.lss: Remote.elf
 	@echo 'Invoking: AVR Create Extended Listing'
-	-avr-objdump -h -S remote.elf  >"remote.lss"
+	-avr-objdump -h -S Remote.elf  >"Remote.lss"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-remote.hex: remote.elf
+Remote.hex: Remote.elf
 	@echo 'Create Flash image (ihex format)'
-	-avr-objcopy -R .eeprom -O ihex remote.elf  "remote.hex"
+	-avr-objcopy -R .eeprom -O ihex Remote.elf  "Remote.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-remote.eep: remote.elf
+Remote.eep: Remote.elf
 	@echo 'Create eeprom image (ihex format)'
-	-avr-objcopy -j .eeprom --no-change-warnings --change-section-lma .eeprom=0 -O ihex remote.elf  "remote.eep"
+	-avr-objcopy -j .eeprom --no-change-warnings --change-section-lma .eeprom=0 -O ihex Remote.elf  "Remote.eep"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-sizedummy: remote.elf
+sizedummy: Remote.elf
 	@echo 'Invoking: Print Size'
-	-avr-size --format=avr --mcu=attiny261 remote.elf
+	-avr-size --format=avr --mcu=attiny461 Remote.elf
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(ASM_DEPS)$(EEPROM_IMAGE)$(FLASH_IMAGE)$(ELFS)$(LSS)$(S_DEPS)$(SIZEDUMMY)$(S_UPPER_DEPS) remote.elf
+	-$(RM) $(OBJS)$(C_DEPS)$(ASM_DEPS)$(EEPROM_IMAGE)$(FLASH_IMAGE)$(ELFS)$(LSS)$(S_DEPS)$(SIZEDUMMY)$(S_UPPER_DEPS) Remote.elf
 	-@echo ' '
 
 secondary-outputs: $(LSS) $(FLASH_IMAGE) $(EEPROM_IMAGE) $(SIZEDUMMY)

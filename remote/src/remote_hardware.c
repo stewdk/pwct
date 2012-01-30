@@ -84,7 +84,7 @@ void initHardware(void)
 	ADCSRA |= _BV(ADSC);//Start conversion
 }
 
-/*
+
 inline void setLED(void)
 {
 	sbi(PORTB, PB3);
@@ -104,7 +104,7 @@ inline void tglLED(void)
 		sbi(PORTB, PB3);
 	}
 }
-*/
+
 
 uint8_t GetADC5(void)
 {
