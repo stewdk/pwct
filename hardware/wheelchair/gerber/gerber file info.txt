@@ -1,0 +1,8 @@
+.GTL top copper
+.GBL bottom copper
+.GTO top silkscreen
+.GBO bottom silkscreen
+.GTS top soldermask
+.GBS bottom soldermask
+.TXT excellon drill file
+.GML rs274x mill layer (empty)
