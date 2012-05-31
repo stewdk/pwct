@@ -225,9 +225,9 @@ void SampleInputs(void)
 {
 	static uint8_t estopDebounceFlg = 0;
 	static uint8_t EstopPulseSent = 0;
-	uint8_t panelBumperOverrideOld;
+	//uint8_t panelBumperOverrideOld;
 
-	panelBumperOverrideOld = PANEL_BUMPER_OVERRIDE;
+	//panelBumperOverrideOld = PANEL_BUMPER_OVERRIDE;
 
 	INVERT_SWITCH			= PORTC.IN & PIN2_bm;
 	BB_FORWARD				= PORTE.IN & PIN5_bm;

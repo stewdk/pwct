@@ -20,9 +20,9 @@
 #include "../atmel/clksys_driver.h"
 #include <util/delay.h>
 #include <avr/interrupt.h>
-#include "string.h"
+#include <string.h>
 #include "util.h"
-#include "stdio.h"
+#include <stdio.h>
 #include "nordic_driver.h"
 #include "linear_actuator.h"
 #include "bumper.h"
@@ -36,7 +36,7 @@ typedef enum {
 }states;
 
 double PLATFORM_COUNT;
-static char GSTR[64];
+//static char GSTR[64];
 const char *byte_to_binary(int x);
 void getStateStr(states state, char *str);
 
@@ -46,11 +46,15 @@ void getStateStr(states state, char *str);
  */
 int main( void )
 {
-	uint8_t i, moveDir = 0, actuatorSwitchState = 0, limitSwitchPressedFlag = 0, prtj = 0;
+	//uint8_t i;
+	uint8_t moveDir = 0;
+	uint8_t actuatorSwitchState = 0;
+	uint8_t limitSwitchPressedFlag = 0;
+	//uint8_t prtj = 0;
 	states state = IDLE;
-	NORDIC_PACKET packet;
-	uint8_t switchState[32];
-	uint16_t bumpers[16];
+	//NORDIC_PACKET packet;
+	//uint8_t switchState[32];
+	//uint16_t bumpers[16];
 
 	//Setup the 32MHz Clock
 	//start 32MHz oscillator
