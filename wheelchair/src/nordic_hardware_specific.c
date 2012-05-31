@@ -6,7 +6,8 @@
  */
 #include "nordic_hardware_specific.h"
 #include "util.h"
-#include "TC_driver.h"
+#include "../atmel/TC_driver.h"
+#include "../atmel/spi_driver.h"
 
 #define NORDIC_INTERNAL		1
 #define NORDIC_MODULE		2
@@ -17,9 +18,6 @@
 //watchdog timer 1tick = 32us
 //46900 ticks = 1.5s
 #define WATCHDOG_PERIOD	46900
-
-#include "util.h"
-#include "spi_driver.h"
 
 SPI_Master_t nordic_spi;
 

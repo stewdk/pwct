@@ -16,8 +16,8 @@
  *
  *****************************************************************************/
 
-#include "avr_compiler.h"
-#include "clksys_driver.h"
+#include "../atmel/avr_compiler.h"
+#include "../atmel/clksys_driver.h"
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include "string.h"
@@ -28,7 +28,7 @@
 #include "bumper.h"
 #include "PWCT_io.h"
 #include <stdlib.h>     // strtol
-#include "wdt_driver.h"
+#include "../atmel/wdt_driver.h"
 #define ACTUATOR_THRESHOLD 10000
 
 typedef enum {

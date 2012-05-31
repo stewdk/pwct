@@ -14,9 +14,9 @@
  *
  */
 
-#include "avr_compiler.h"
+#include "../atmel/avr_compiler.h"
 #include "bumper.h"
-#include "adc_driver.h"
+#include "../atmel/adc_driver.h"
 #include "PWCT_io.h"
 #include "stdio.h"
 #include "string.h"

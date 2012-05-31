@@ -25,21 +25,21 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
       <AvrGcc>
-  <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
-  <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
-  <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
-  <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
-  <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
-  <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
-  <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
-  <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
-  <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
-  <avrgcc.linker.libraries.Libraries>
-    <ListValues>
-      <Value>m</Value>
-    </ListValues>
-  </avrgcc.linker.libraries.Libraries>
-</AvrGcc>
+        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
+        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+        <avrgcc.linker.libraries.Libraries>
+          <ListValues>
+            <Value>m</Value>
+          </ListValues>
+        </avrgcc.linker.libraries.Libraries>
+      </AvrGcc>
     </ToolchainSettings>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -65,16 +65,35 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="atmel" />
     <Folder Include="src" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\adc_driver.c">
+    <Compile Include="atmel\adc_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="atmel\clksys_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="atmel\pmic_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="atmel\port_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="atmel\spi_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="atmel\TC_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="atmel\usart_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="atmel\wdt_driver.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\bumper.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\clksys_driver.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\linear_actuator.c">
@@ -89,28 +108,10 @@
     <Compile Include="src\nordic_hardware_specific.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\pmic_driver.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\port_driver.c">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="src\PWCT_io.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\spi_driver.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\TC_driver.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\usart_driver.c">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="src\util.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\wdt_driver.c">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>

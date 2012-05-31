@@ -4,13 +4,13 @@
  *  Created on: Mar 26, 2011
  *      Author: grant
  */
-#include "avr_compiler.h"
+#include "../atmel/avr_compiler.h"
 #include "linear_actuator.h"
-#include "TC_driver.h"
-#include "adc_driver.h"
+#include "../atmel/TC_driver.h"
+#include "../atmel/adc_driver.h"
 #include "util.h"
 #include "stdio.h"
-#include "pmic_driver.h"
+#include "../atmel/pmic_driver.h"
 
 //200 = 6.2us
 #define TC_PERIOD 1000

@@ -4,10 +4,10 @@
  *  Created on: Mar 28, 2011
  *      Author: grant
  */
-#include "avr_compiler.h"
-#include "TC_driver.h"
-#include "port_driver.h"
-#include "pmic_driver.h"
+#include "../atmel/avr_compiler.h"
+#include "../atmel/TC_driver.h"
+#include "../atmel/port_driver.h"
+#include "../atmel/pmic_driver.h"
 #include "nordic_driver.h"
 #include "util/delay.h"
 #include "util.h"

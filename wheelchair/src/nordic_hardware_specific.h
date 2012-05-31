@@ -8,7 +8,7 @@
 #ifndef NORDIC_HARDWARE_SPECIFIC_H_
 #define NORDIC_HARDWARE_SPECIFIC_H_
 
-#include "avr_compiler.h"
+#include "../atmel/avr_compiler.h"
 #include "util.h"
 
 //function to enable interrupts
