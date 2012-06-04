@@ -34,14 +34,14 @@ inline void chipSelect(void)
 
 }
 
-//release SS
+//release CS
 inline void chipRelease(void)
 {
 #if NORDIC_OPTION == NORDIC_INTERNAL
 	PORTF.OUTSET = PIN4_bm;
 	PORTF.DIRCLR = PIN4_bm;
 #else	//NORDIC_MODULE
-	PORTF.OUTSET = PIN6_bm;
+	PORTE.OUTSET = PIN6_bm;
 	PORTE.DIRCLR = PIN6_bm;
 #endif
 }
@@ -64,7 +64,7 @@ inline void activeMode(void)
 //set CE low if mode == 0, else set CE high
 inline void setMode(uint8_t mode)
 {
-	PORTE.OUTSET = mode;
+	PORTE.OUTSET = mode & PIN7_bm;
 }
 
 //Initialize microcontroller pin directions, spi, interrupts
@@ -84,7 +84,7 @@ void initalizeHardwareForNordic(void)
 	PORTH.INT0MASK = PIN2_bm;
 
 	/* Enable PMIC interrupt level low. */
-	PMIC.CTRL |= PMIC_MEDLVLEX_bp;
+	PMIC.CTRL |= PMIC_MEDLVLEX_bm | PMIC_LOLVLEX_bm;
 
 	//turn off timer
 	TC0_ConfigClockSource( &TCF0, TC_CLKSEL_OFF_gc );

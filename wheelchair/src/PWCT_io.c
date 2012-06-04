@@ -9,13 +9,10 @@
 #include "../atmel/port_driver.h"
 #include "../atmel/pmic_driver.h"
 #include "nordic_driver.h"
-#include "util/delay.h"
+#include <util/delay.h>
 #include "util.h"
 #include "PWCT_io.h"
-#include "util/delay.h"
-#include "stdio.h"
-
-//#include "nordic_hardware_specific.h"
+#include <stdio.h>
 
 //debounce timers 1tick = 8us
 //1250 ticks = 10ms
@@ -28,55 +25,82 @@
 #define DEBOUNCE_BUTTONS	0
 #define ENABLE_INSTRUCTOR_REMOTE_LINEAR_ACTUATOR_CONTROL	0
 
-/* Input/Output List:
- *	Bumper Front										Filter
- *	Bumper Left											Filter
- *	Bumper Right										Filter
- *	Bumper Back											Filter
- *	Instructor Forward											Clean
- *	Instructor Reverse											Clean
- *	Instructor Left												Clean
- *	Instructor Right											Clean
- *	Instructor LA Up											Clean
- *	Instructor LA Down											Clean
- *	Instructor Disable Student Joy								Clean
- *	Student Forward					PJ3		Debounce
- *	Student Reverse					PJ4		Debounce
- *	Student Left					PJ5		Debounce
- *	Student Right					PJ6		Debounce
- *	Student Fifth					PJ7		Debounce
- *	Buddy Button Forward			PH6		Debounce
- *	Buddy Button Reverse			PH7		Debounce
- *	Buddy Button Left				PJ0		Debounce
- *	Buddy Button Right				PJ1		Debounce
- *	Buddy Button Fifth				PJ2		Debounce
- *	Emergency Stop					PK2		Debounce
- *	Omni+ On/Off Switch				PK6									Output
- *	Panel LA Up						PK0		Debounce
- *	Panel LA Down					PK3		Debounce
- *	Panel LA LED					PK5									Output
- *	Panel Bumper Override LED		PK4									Output
- *	Panel Bumper Override Switch	PK1		Debounce
- *	Limit Switch					PK7		Debounce
- *	Out Forward						PH1									Output
- *	Out Reverse						PH0									Output
- *	Out Left						PH3									Output
- *	Out Right						PH4									Output
- *	Out Fifth						PH5									Output
+/* Input/Output List
+ *  Item							Pin			In/Out		Note
+ *  Prop. Joy Detect				PK7			Input		Debounce
+ *  Prop. Joy Speed (Fwd/Rev)		PA1			Input		A/D
+ *  Prop. Joy Direction (L/R)		PA2			Input		A/D
+ *	Bumper							PA7			Input		optional A/D
+ *	Limit Switch 1					PA3			Input		A/D
+ *	Limit Switch 2					PA4			Input		A/D
+ *	Limit Switch 3					PA5			Input		A/D
+ *	Limit Switch 4					PA6			Input		A/D
+ *	Instructor Forward				remote		Input		Clean
+ *	Instructor Reverse				remote		Input		Clean
+ *	Instructor Left					remote		Input		Clean
+ *	Instructor Right				remote		Input		Clean
+ *	Instructor LA Up				remote		Input		Clean
+ *	Instructor LA Down				remote		Input		Clean
+ *	Instructor Disable Student Joy	remote		Input		Clean
+ *	Student Forward					PJ3			Input		Debounce
+ *	Student Reverse					PJ4			Input		Debounce
+ *	Student Left					PJ5			Input		Debounce
+ *	Student Right					PJ6			Input		Debounce
+ *	Student Fifth					PJ7			Input		Debounce
+ *	Buddy Button Forward			PH6			Input		Debounce
+ *	Buddy Button Reverse			PH7			Input		Debounce
+ *	Buddy Button Left				PJ0			Input		Debounce
+ *	Buddy Button Right				PJ1			Input		Debounce
+ *	Buddy Button Fifth				PJ2			Input		Debounce
+ *	Emergency Stop					PK2			Input		Debounce
+ *	Omni+ On/Off Switch				PK6			Output
+ *	Panel LA Up						PK0			Input		Debounce
+ *	Panel LA Down					PK3			Input		Debounce
+ *	Panel LA LED					PK5			Output
+ *	Panel Bumper Override LED		PK4			Output
+ *	Panel Bumper Override Switch	PK1			Input		Debounce
+ *	Omni+ Out Forward				PH1			Output
+ *	Omni+ Out Reverse				PH0			Output
+ *	Omni+ Out Left					PH4			Output
+ *	Omni+ Out Right					PH3			Output
+ *	Omni+ Out Fifth					PH5			Output
+ *	LCD Button 1					PQ0			Input		Debounce
+ *	LCD Button 2					PQ1			Input		Debounce
+ *	LCD Button 3					PQ2			Input		Debounce
+ *	LCD Button 4					PQ3			Input		Debounce
+ *	LCD Button 5					PR0			Input		Debounce
+ *	Fwd/Rev Invert					PR1			Input		Debounce
  */
 
-//these flags are all active low
-static uint8_t 	INSTRUCTOR_FORWARD, INSTRUCTOR_REVERSE, INSTRUCTOR_LEFT, INSTRUCTOR_RIGHT,
-				INSTRUCTOR_LA_UP, INSTRUCTOR_LA_DOWN,
-				INSTRUCTOR_ESTOP,
-				BB_FORWARD, BB_REVERSE, BB_LEFT, BB_RIGHT, BB_FIFTH,
-				STUDENT_FORWARD, STUDENT_REVERSE, STUDENT_LEFT, STUDENT_RIGHT, STUDENT_FIFTH,
-				ESTOP,
-				PANEL_LA_UP, PANEL_LA_DOWN,
-				PANEL_BUMPER_OVERRIDE,
-				BUMPER_FORWARD = 1, BUMPER_REVERSE = 1, BUMPER_LEFT = 1, BUMPER_RIGHT = 1,
-				LIMIT_SWITCH,
-				INVERT_SWITCH;
+//these input flags are all active low
+static uint8_t INSTRUCTOR_FORWARD;
+static uint8_t INSTRUCTOR_REVERSE;
+static uint8_t INSTRUCTOR_LEFT;
+static uint8_t INSTRUCTOR_RIGHT;
+static uint8_t INSTRUCTOR_LA_UP;
+static uint8_t INSTRUCTOR_LA_DOWN;
+static uint8_t INSTRUCTOR_ESTOP;
+static uint8_t BB_FORWARD;
+static uint8_t BB_REVERSE;
+static uint8_t BB_LEFT;
+static uint8_t BB_RIGHT;
+static uint8_t BB_FIFTH;
+static uint8_t STUDENT_FORWARD;
+static uint8_t STUDENT_REVERSE;
+static uint8_t STUDENT_LEFT;
+static uint8_t STUDENT_RIGHT;
+static uint8_t STUDENT_FIFTH;
+static uint8_t ESTOP;
+static uint8_t PANEL_LA_UP;
+static uint8_t PANEL_LA_DOWN;
+static uint8_t PANEL_BUMPER_OVERRIDE;
+static uint8_t BUMPER_FORWARD = 1;
+static uint8_t BUMPER_REVERSE = 1;
+static uint8_t BUMPER_LEFT = 1;
+static uint8_t BUMPER_RIGHT = 1;
+static uint8_t PROP_JOY_DETECT;
+static uint8_t INVERT_SWITCH;
+static uint8_t LIMIT_SWITCH;
 
 void PulsePGDTEstop(void);
 
@@ -144,7 +168,7 @@ void initPWCTio(void)
 	TC1_ConfigWGM( &TCE1, TC_WGMODE_NORMAL_gc );
 	TC1_ConfigWGM( &TCF1, TC_WGMODE_NORMAL_gc );
 
-	#if DEBOUNCE_BUTTONS
+#if DEBOUNCE_BUTTONS
 	//set up compare interrupts
 	TC0_SetCCAIntLevel(&TCC0, TC_CCAINTLVL_MED_gc);
 	TC0_SetCCBIntLevel(&TCC0, TC_CCBINTLVL_MED_gc);
@@ -172,23 +196,18 @@ void initPWCTio(void)
 	TC1_ConfigClockSource( &TCE1, TC_CLKSEL_DIV256_gc );
 	TC1_ConfigClockSource( &TCF1, TC_CLKSEL_DIV256_gc );
 
-	PORT_ConfigurePins( &PORTC, PIN1_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc );
-	PORT_ConfigurePins( &PORTC, PIN2_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc );
-	PORT_ConfigurePins( &PORTH, PIN6_bm | PIN7_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc );
-	PORT_ConfigurePins( &PORTJ, 0xFF, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc );
-	PORT_ConfigurePins( &PORTK, PIN0_bm | PIN1_bm | PIN3_bm | PIN7_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc );
-	PORT_ConfigurePins( &PORTK, PIN2_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc );
-	PORT_ConfigurePins( &PORTD, PIN7_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc );
-	PORT_ConfigurePins( &PORTE, PIN4_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc );
-	PORT_ConfigurePins( &PORTE, PIN5_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc );
-	PORT_SetPinsAsInput( &PORTC, PIN1_bm);
-	PORT_SetPinsAsInput( &PORTC, PIN2_bm);
+	PORT_ConfigurePins( &PORTH, PIN6_bm | PIN7_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // BB fwd, BB rev
+	PORT_ConfigurePins( &PORTJ, 0xFF, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // remaining BB, switch joystick in
+	PORT_ConfigurePins( &PORTK, PIN0_bm | PIN1_bm | PIN3_bm | PIN7_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LA up, bumper override, LA down, Prop. Joy Detect
+	PORT_ConfigurePins( &PORTK, PIN2_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc ); // e-stop button
+	PORT_ConfigurePins( &PORTQ, PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LCD buttons
+	PORT_ConfigurePins( &PORTR, PIN0_bm | PIN1_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LCD button, invert switch
+
 	PORT_SetPinsAsInput( &PORTH, PIN6_bm | PIN7_bm);
-	PORT_SetPinsAsInput( &PORTJ, PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm | PIN5_bm | PIN7_bm );
-	PORT_SetPinsAsInput( &PORTD, PIN7_bm);
-	PORT_SetPinsAsInput( &PORTE, PIN4_bm);
-	PORT_SetPinsAsInput( &PORTE, PIN5_bm);
+	PORT_SetPinsAsInput( &PORTJ, PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm | PIN4_bm | PIN5_bm | PIN6_bm | PIN7_bm );
 	PORT_SetPinsAsInput( &PORTK,  PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm | PIN7_bm);
+	PORT_SetPinsAsInput( &PORTQ,  PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm);
+	PORT_SetPinsAsInput( &PORTR,  PIN0_bm | PIN1_bm);
 #if DEBOUNCE_BUTTONS
 	//set up pin change interrupts
 	PORT_ConfigureInterrupt1( &PORTH, PORT_INT1LVL_MED_gc, PIN6_bm | PIN7_bm);
@@ -201,9 +220,9 @@ void initPWCTio(void)
 
 	//set outputs
 	PORTK.OUTCLR = PIN4_bm | PIN5_bm;	//leds off
-	PORTK.OUTCLR = PIN6_bm;				//switch disabled
+	PORTK.OUTCLR = PIN6_bm;				//Omni+ on/off switch disabled
 	PORTK.DIRSET = PIN4_bm | PIN5_bm | PIN6_bm;
-	PORTH.OUTCLR = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm | PIN5_bm;	//switch disabled
+	PORTH.OUTCLR = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm | PIN5_bm;	//switch joystick disabled
 	PORTH.DIRSET = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm | PIN5_bm;
 
 	//get default values
@@ -229,30 +248,31 @@ void SampleInputs(void)
 
 	//panelBumperOverrideOld = PANEL_BUMPER_OVERRIDE;
 
-	INVERT_SWITCH			= PORTC.IN & PIN2_bm;
-	BB_FORWARD				= PORTE.IN & PIN5_bm;
-	BB_REVERSE				= PORTC.IN & PIN1_bm;
+	BB_FORWARD				= PORTH.IN & PIN6_bm;
+	BB_REVERSE				= PORTH.IN & PIN7_bm;
 	BB_LEFT					= PORTJ.IN & PIN0_bm;
 	BB_RIGHT				= PORTJ.IN & PIN1_bm;
 	BB_FIFTH				= PORTJ.IN & PIN2_bm;
 	STUDENT_FORWARD			= PORTJ.IN & PIN3_bm;
-	STUDENT_REVERSE			= PORTE.IN & PIN4_bm;
+	STUDENT_REVERSE			= PORTJ.IN & PIN4_bm;
 	STUDENT_LEFT			= PORTJ.IN & PIN5_bm;
-	STUDENT_RIGHT			= PORTD.IN & PIN7_bm;
+	STUDENT_RIGHT			= PORTJ.IN & PIN6_bm;
 	STUDENT_FIFTH			= PORTJ.IN & PIN7_bm;
-	PANEL_LA_UP				= PORTK.IN & PIN0_bm;
-	PANEL_BUMPER_OVERRIDE	= PORTK.IN & PIN1_bm;
 	ESTOP					= PORTK.IN & PIN2_bm;
+	PANEL_LA_UP				= PORTK.IN & PIN0_bm;
 	PANEL_LA_DOWN			= PORTK.IN & PIN3_bm;
-	LIMIT_SWITCH			= PORTK.IN & PIN7_bm;
+	PANEL_BUMPER_OVERRIDE	= PORTK.IN & PIN1_bm;
+	PROP_JOY_DETECT			= PORTK.IN & PIN7_bm;
+	INVERT_SWITCH			= PORTR.IN & PIN1_bm;
+	LIMIT_SWITCH			= 0;
 
 	//printf("\rSTUDENT_FORWARD = %d  BB_FORWARD = %d  STUDENT_REVERSE = %d  BB_REVERSE = %d", STUDENT_FORWARD, BB_FORWARD, STUDENT_REVERSE, BB_REVERSE);
 
-	if(ESTOP) {
+	if(ESTOP) { // Not pressed
 		estopDebounceFlg = 0;
 		EstopPulseSent = 0;
 	}
-	else if(!EstopPulseSent) {
+	else if(!EstopPulseSent) { // Pressed
 		estopDebounceFlg++;
 		if(estopDebounceFlg >= 3) {
 			PulsePGDTEstop();
@@ -260,7 +280,7 @@ void SampleInputs(void)
 		}
 	}
 
-	//set bumper override led led
+	//set bumper override led
 	if(PANEL_BUMPER_OVERRIDE) {
 		PORTK.OUTCLR = PIN4_bm;
 	} else {
@@ -288,8 +308,8 @@ void Move(uint8_t moveDir)
 {
 	/*	Out Forward		PH1
 	 *	Out Reverse		PH0
-	 *	Out Left		PH3
-	 *	Out Right		PH4
+	 *	Out Left		PH4
+	 *	Out Right		PH3
 	 *	Out Fifth		PH5
 	 */
 
@@ -630,16 +650,16 @@ ISR(PORTK_INT1_vect)
 	uint8_t switchedPins = 0;
 
 	//PANEL_BUMPER_OVERRIDE		PK1
-	//LIMIT_SWITCH				PK7
+	//PROP_JOY_DETECT			PK7
 
-	switchedPins = (PANEL_BUMPER_OVERRIDE | LIMIT_SWITCH) ^ ((PIN1_bm | PIN7_bm)  & PORTK.IN);
+	switchedPins = (PANEL_BUMPER_OVERRIDE | PROP_JOY_DETECT) ^ ((PIN1_bm | PIN7_bm)  & PORTK.IN);
 
 	if((switchedPins & PIN1_bm) && !(TCD1.CTRLB & TC1_CCAEN_bm)) {	//PANEL_BUMPER_OVERRIDE
 		//start debounce timer
 		TC_SetCompareA(&TCD1, TCD1.CNT + DEBOUNCE_PERIOD);
 		TC1_EnableCCChannels( &TCD1, TC1_CCAEN_bm);
 	}
-	if((switchedPins & PIN7_bm) && !(TCD1.CTRLB & TC1_CCBEN_bm)) {	//LIMIT_SWITCH
+	if((switchedPins & PIN7_bm) && !(TCD1.CTRLB & TC1_CCBEN_bm)) {	//PROP_JOY_DETECT
 		//start debounce timer
 		TC_SetCompareB(&TCD1, TCD1.CNT + DEBOUNCE_PERIOD);
 		TC1_EnableCCChannels( &TCD1, TC1_CCBEN_bm);
@@ -753,14 +773,14 @@ ISR(TCD1_CCA_vect)	//PANEL_BUMPER_OVERRIDE
 	}
 }
 
-ISR(TCD1_CCB_vect)	//LIMIT_SWITCH
+ISR(TCD1_CCB_vect)	//PROP_JOY_DETECT
 {
 	if((TCD1.CTRLB & TC1_CCBEN_bm) == 0) {
 		return;
 	}
 	TC1_DisableCCChannels( &TCD1, TC1_CCBEN_bm);
-	LIMIT_SWITCH	= PORTK.IN & PIN7_bm;
-	if(LIMIT_SWITCH == 0) {	//platform down
+	PROP_JOY_DETECT	= PORTK.IN & PIN7_bm;
+	if(PROP_JOY_DETECT == 0) {	//platform down
 		PORTK.OUTCLR = PIN5_bm;	//turn on indicator LED
 	}
 	else {
@@ -810,7 +830,7 @@ void PulsePGDTEstop(void)
 	ResetBumperThreshold();
 }
 
-ISR(TCF1_CCB_vect)
+ISR(TCF1_CCB_vect)  //Omni e-stop
 {
 	if((TCF1.CTRLB & TC1_CCBEN_bm) == 0) {
 		return;

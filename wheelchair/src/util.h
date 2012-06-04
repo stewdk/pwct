@@ -8,10 +8,6 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-
 void dbgLEDinit(void);
 void dbgLEDset(void);
 void dbgLEDclr(void);

@@ -74,7 +74,7 @@ int main( void )
 //	initBumpers();
 	initPWCTio();
 
-	/* Enable global interrupts. */
+	/* Enable all three levels global interrupts. */
 	sei();
 
 //	printf("\n\rReset\n\r");
@@ -184,7 +184,7 @@ int main( void )
 		WDT_Reset();
 //		dbgLEDtgl();
 
-		BumperAlgorithm();
+//		BumperAlgorithm();
 
 		//check inputs for state changes
 		SampleInputs();

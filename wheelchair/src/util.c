@@ -21,23 +21,23 @@ static FILE mystdout = FDEV_SETUP_STREAM (uart_putchar, NULL, _FDEV_SETUP_WRITE)
 
 void dbgLEDinit(void)
 {
-	PORTC.OUTCLR = PIN0_bm;
-	PORTC.DIRSET = PIN0_bm;
+	PORTD.OUTCLR = PIN0_bm;
+	PORTD.DIRSET = PIN0_bm;
 }
 
 void inline dbgLEDset(void)
 {
-	PORTC.OUTSET = PIN0_bm;
+	PORTD.OUTSET = PIN0_bm;
 }
 
 void inline dbgLEDclr(void)
 {
-	PORTC.OUTCLR = PIN0_bm;
+	PORTD.OUTCLR = PIN0_bm;
 }
 
 void inline dbgLEDtgl(void)
 {
-	PORTC.OUTTGL = PIN0_bm;
+	PORTD.OUTTGL = PIN0_bm;
 }
 
 

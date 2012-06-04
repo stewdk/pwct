@@ -23,22 +23,38 @@ static int8_t adcb_offset0, adcb_offset1, adcb_offset2, adcb_offset3;
 static int16_t adc_result0, adc_result1, adc_result2, adc_result3;
 static uint8_t OVERCURRENT_FLAG;
 
-int8_t initLinearActuators(void)
-{
-	int8_t err = 0;
+static void setTop(void) {
+	PORTE.OUTSET = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm;
+}
 
+static void clrTop(void) {
+	PORTE.OUTCLR = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm;
+}
+
+static void setBottom(void) {
+	PORTE.OUTSET = PIN5_bm;
+	PORTF.OUTSET = PIN0_bm | PIN1_bm | PIN3_bm;
+}
+
+static void clrBottom(void) {
+	PORTE.OUTCLR = PIN5_bm;
+	PORTF.OUTCLR = PIN0_bm | PIN1_bm | PIN3_bm;
+}
+
+void initLinearActuators(void)
+{
 	//turn off timers
 	TC0_ConfigClockSource( &TCE0, TC_CLKSEL_OFF_gc );
 
 	//Enable output
-	PORTE.OUTCLR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
-	PORTF.OUTCLR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
-	PORTE.DIRSET = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
-	PORTF.DIRSET = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	clrTop();
+	clrBottom();
+	PORTE.DIRSET = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm | PIN5_bm;
+	PORTF.DIRSET = PIN0_bm | PIN1_bm | PIN3_bm;
 
 	/* Set the TC period.
 	 * 1000 at 32MHz is 32kHz, above human hearing range*/
-	TC_SetPeriod( &TCE0, TC_PERIOD );
+	TC_SetPeriod( &TCE0, TC_PERIOD );  // Timer/Counter E0
 
 	/* Configure the TC for single slope mode. */
 	TC0_ConfigWGM( &TCE0, TC_WGMODE_NORMAL_gc );
@@ -109,8 +125,6 @@ int8_t initLinearActuators(void)
 
 	//enable free running mode
 	ADC_FreeRunning_Enable(&ADCB);
-
-	return err;
 }
 
 int8_t RaisePlatform(void)
@@ -121,12 +135,12 @@ int8_t RaisePlatform(void)
 		return -1;
 	}
 
-	//turn off lower platform pins
-	PORTF.OUTCLR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	//turn off bottom fets
+	clrBottom();
 
 	//turn on top fets and start timer to recharge bootstrap
 //	TCE0.CNT = 0;
-	PORTE.OUTSET = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	setTop();
 	TC0_ConfigClockSource( &TCE0, TC_CLKSEL_DIV1_gc );
 
 	return err;
@@ -136,20 +150,20 @@ int8_t RaisePlatform(void)
 ISR(TCE0_OVF_vect)
 {
 	//turn off top fets
-	PORTE.OUTCLR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	clrTop();
 
 	//turn on bottom fets
-	PORTF.OUTSET = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	setBottom();
 
 	//wait a little bit for cap to charge
 	asm volatile ("nop");	//31.25ns delay
 	asm volatile ("nop");	//31.25ns delay
 
 	//turn off bottom fets
-	PORTF.OUTCLR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	clrBottom();
 
 	//turn on top fets
-	PORTE.OUTSET = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	setTop();
 }
 
 int8_t LowerPlatform(void)
@@ -162,10 +176,10 @@ int8_t LowerPlatform(void)
 
 	//turn off raise platform pins and timer
 	TC0_ConfigClockSource( &TCE0, TC_CLKSEL_OFF_gc );
-	PORTE.OUTCLR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	clrTop();
 
 	//turn on lower platform pins
-	PORTF.OUTSET = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	setBottom();
 
 	return err;
 }
@@ -176,8 +190,8 @@ int8_t StopPlatform(void)
 
 	TC0_ConfigClockSource( &TCE0, TC_CLKSEL_OFF_gc );
 
-	PORTE.OUTCLR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
-	PORTF.OUTCLR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+	clrTop();
+	clrBottom();
 
 	return err;
 }

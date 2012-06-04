@@ -8,7 +8,7 @@
 #ifndef LINEAR_ACTUATOR_H_
 #define LINEAR_ACTUATOR_H_
 
-int8_t initLinearActuators(void);
+void initLinearActuators(void);
 int8_t RaisePlatform(void);
 int8_t LowerPlatform(void);
 int8_t StopPlatform(void);

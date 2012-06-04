@@ -12,10 +12,10 @@
 #include "util.h"
 
 //function to enable interrupts
-#define SEI()	sei()
+#define SEI()	AVR_LEAVE_CRITICAL_REGION()
 
 //function to disable interrupts
-#define CLI()	cli()
+#define CLI()	AVR_ENTER_CRITICAL_REGION()
 
 void chipSelect(void);
 void chipRelease(void);
