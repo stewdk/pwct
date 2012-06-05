@@ -29,6 +29,8 @@
 #include "PWCT_io.h"
 #include <stdlib.h>     // strtol
 #include "../atmel/wdt_driver.h"
+#include "motor_driver.h"
+#include "lcd_driver.h"
 #define ACTUATOR_THRESHOLD 10000
 
 typedef enum {
@@ -77,9 +79,13 @@ int main( void )
 	/* Enable all three levels global interrupts. */
 	sei();
 
-//	printf("\n\rReset\n\r");
+	printf("\n\rReset\n\r");
 
 	nordic_Initialize(1);
+
+	initMotorDriver();
+	initLCDDriver();
+
 /*
 	//TEST3 WIRELESS COMMUNICATION
 	while(1) {

@@ -63,8 +63,10 @@ void dbgUSARTinit(void)
 	USART_RxdInterruptLevel_Set(USART_data.usart, USART_RXCINTLVL_LO_gc);
 
 	/* Set Baudrate to 115200 bps */
-	USART_Baudrate_Set(USART_data.usart, 1047 , -6);
+	//USART_Baudrate_Set(USART_data.usart, 1047 , -6);
 
+	/* Set Baudrate to 38400 bps */
+	USART_Baudrate_Set(USART_data.usart, 3269 , -6);
 
 	/* Enable both RX and TX. */
 	USART_Rx_Enable(USART_data.usart);
