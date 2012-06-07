@@ -40,7 +40,11 @@ inline void setDirRx(void)
 
 int8_t nordic_Initialize(uint8_t receiver)
 {
-	uint8_t data, datas[10], i, previousMode, status;
+	uint8_t data;
+	uint8_t datas[10];
+	//uint8_t i;
+	//uint8_t previousMode;
+	//uint8_t status;
 	int8_t err = 0;
 
 	initalizeHardwareForNordic();
@@ -194,7 +198,11 @@ void nordic_TransmitData(NORDIC_PACKET * packet)
 //make sure txdata and rxdata are at least of length dataSize
 int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status)
 {
-	uint8_t i, rx, data, previousMode = 0, statusFake;
+	uint8_t i;
+	uint8_t rx;
+	uint8_t data;
+	uint8_t previousMode = 0;
+	uint8_t statusFake;
 	int8_t err = 0;
 
 	//check to make sure parameters are valid

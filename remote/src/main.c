@@ -35,7 +35,7 @@ void DisableWatchdog(void)
 int main(void)
 {
 	NORDIC_PACKET testPacket;
-	uint8_t i;
+	//uint8_t i;
 
 	memset(&testPacket, 0, sizeof(testPacket));
 

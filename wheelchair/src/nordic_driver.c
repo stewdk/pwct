@@ -4,38 +4,62 @@
  *  Created on: Feb 22, 2011
  *      Author: grant
  */
+#include <stdio.h>
+#include <string.h>
 #include "nordic_driver.h"
-#include "stdio.h"
 #include "nordic_hardware_specific.h"
-#include "string.h"
 
 #define USE_ENHANCED_SHOCKBURST	1
 
-static int8_t RX_DATA_READY_FLAG = 0;
-static int8_t TX_DATA_SENT_FLAG = 0;
-static int8_t MAX_RETRANSMITS_READY_FLAG = 0;
-static NORDIC_PACKET LAST_PACKET;
+static volatile int8_t RX_DATA_READY_FLAG = 0;
+static volatile int8_t TX_DATA_SENT_FLAG = 0;
+static volatile int8_t MAX_RETRANSMITS_READY_FLAG = 0;
+static volatile NORDIC_PACKET LAST_PACKET;
 
-int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status);
+static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status);
 int8_t nordic_WriteRegister(uint8_t reg, uint8_t data, uint8_t *status);
 int8_t nordic_WriteRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status);
 int8_t nordic_ReadRegister(uint8_t reg, uint8_t *data, uint8_t *status);
 int8_t nordic_ReadRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status);
 
-void setDirTx(void)
+static void nordic_CopyPacket(NORDIC_PACKET* dest, volatile NORDIC_PACKET* src)
+{
+	AVR_ENTER_CRITICAL_REGION();
+	dest->data.array[0] = src->data.array[0];
+	dest->data.array[1] = src->data.array[1];
+	dest->data.array[2] = src->data.array[2];
+	dest->data.array[3] = src->data.array[3];
+	dest->rxpipe = src->rxpipe;
+	AVR_LEAVE_CRITICAL_REGION();
+}
+
+static void nordic_ClearPacket(volatile NORDIC_PACKET* packet)
+{
+	AVR_ENTER_CRITICAL_REGION();
+	packet->data.array[0] = 0;
+	packet->data.array[1] = 0;
+	packet->data.array[2] = 0;
+	packet->data.array[3] = 0;
+	packet->rxpipe = 0;
+	AVR_LEAVE_CRITICAL_REGION();
+}
+
+static void setDirTx(void)
 {
 	standbyMode();
 	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; TX mode; PWR_UP bit set
 	nordic_WriteRegister(CONFIG_nReg, 0x0A, NULL);
 }
 
-void setDirRx(void)
+/*
+static void setDirRx(void)
 {
 	standbyMode();
 	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; RX mode; PWR_UP bit set
 	nordic_WriteRegister(CONFIG_nReg, 0x0B, NULL);
 	activeMode();
 }
+*/
 
 int8_t nordic_Initialize(uint8_t receiver)
 {
@@ -150,10 +174,10 @@ uint8_t nordic_GetNewPacket(NORDIC_PACKET* packet)
 	uint8_t packetFound = 0;
 
 	if(RX_DATA_READY_FLAG) {
-		CLI();	//clear flag and copy packet is a critical section
+		AVR_ENTER_CRITICAL_REGION();	//clear flag and copy packet is a critical section
 		RX_DATA_READY_FLAG = 0;
-		memcpy(packet, &LAST_PACKET, sizeof(NORDIC_PACKET));
-		SEI();
+		nordic_CopyPacket(packet, &LAST_PACKET);
+		AVR_LEAVE_CRITICAL_REGION();
 		packetFound = 1;
 	}
 	return packetFound;
@@ -163,18 +187,18 @@ uint8_t nordic_GetNewPacket(NORDIC_PACKET* packet)
 //the return value is the number of data bytes stored in data
 void nordic_GetLastPacket(NORDIC_PACKET* packet)
 {
-	memcpy(packet, &LAST_PACKET, sizeof(NORDIC_PACKET));
+	nordic_CopyPacket(packet, &LAST_PACKET);
 	if(RX_DATA_READY_FLAG) {
-		CLI();	//clear flag and copy packet is a critical section
+		AVR_ENTER_CRITICAL_REGION();	//clear flag is a critical section
 		RX_DATA_READY_FLAG = 0;
-		SEI();
+		AVR_LEAVE_CRITICAL_REGION();
 	}
 }
 
-//clears the last rx packet, called if packet watchdog timesout
+//clears the last rx packet, called if packet watchdog times out
 void ClearLastPacket(void)
 {
-	memset(&LAST_PACKET, 0, sizeof(NORDIC_PACKET));
+	nordic_ClearPacket(&LAST_PACKET);
 }
 
 void SetInstructorRemote(void)
@@ -182,7 +206,7 @@ void SetInstructorRemote(void)
 	NORDIC_PACKET packet;
 
 	//parse the packet, call appropriate setter functions
-	memcpy(&packet, &LAST_PACKET, sizeof(NORDIC_PACKET));
+	nordic_CopyPacket(&packet, &LAST_PACKET);
 
 	setInstructorEStop(		(packet.data.array[0]&0b00000001)>>0 );
 	setInstructorLAUp(		(packet.data.array[0]&0b00000010)>>1 );
@@ -212,7 +236,7 @@ void nordic_TransmitData(NORDIC_PACKET * packet)
 }
 
 //make sure txdata and rxdata are at least of length dataSize
-int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status)
+static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status)
 {
 	uint8_t i;
 	uint8_t rx;
@@ -315,7 +339,7 @@ inline uint8_t nordic_IRQ(void)
 	previousMode = standbyMode();
 	nordic_SendCommand(NOP_nCmd, NULL, NULL, 0, &status);
 
-	if(status & 0x40) {
+	if(status & 0x40) { // Data Ready RX FIFO
 		RX_DATA_READY_FLAG = 1;
 		//get latest packet
 		nordic_SendCommand(R_RX_PL_WID_nCmd, NULL, &size, 1, NULL);	//get payload size
@@ -324,17 +348,20 @@ inline uint8_t nordic_IRQ(void)
 		}
 		if (size != 0) {
 			nordic_SendCommand(R_RX_PAYLOAD_nCmd, NULL, data, size, NULL);	//get payload
-			memcpy(LAST_PACKET.data.array, data, sizeof(LAST_PACKET.data));
+			LAST_PACKET.data.array[0] = data[0];
+			LAST_PACKET.data.array[1] = data[1];
+			LAST_PACKET.data.array[2] = data[2];
+			LAST_PACKET.data.array[3] = data[3];
 			LAST_PACKET.rxpipe = (status & 0x0E) >> 1;
 		}
 		//clear fifo
 		nordic_SendCommand(FLUSH_RX_nCmd, NULL, NULL, 0, NULL);
 	}
-	if(status & 0x20) {
+	if(status & 0x20) { // Data Sent TX FIFO
 		TX_DATA_SENT_FLAG = 1;
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
 	}
-	if(status & 0x10) {
+	if(status & 0x10) { // Maximum number of TX retransmits
 		MAX_RETRANSMITS_READY_FLAG = 1;
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
 	}

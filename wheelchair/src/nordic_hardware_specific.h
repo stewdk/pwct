@@ -11,12 +11,6 @@
 #include "../atmel/avr_compiler.h"
 #include "util.h"
 
-//function to enable interrupts
-#define SEI()	AVR_LEAVE_CRITICAL_REGION()
-
-//function to disable interrupts
-#define CLI()	AVR_ENTER_CRITICAL_REGION()
-
 void chipSelect(void);
 void chipRelease(void);
 uint8_t standbyMode(void);
@@ -25,6 +19,7 @@ void setMode(uint8_t mode);
 void initalizeHardwareForNordic(void);
 uint8_t SPI_TransceiveByte(uint8_t data);
 
+//The implementations of the following functions are in PWCT_io.c
 void setInstructorEStop(uint8_t state);
 void setInstructorLAUp(uint8_t state);
 void setInstructorLADown(uint8_t state);
@@ -33,11 +28,11 @@ void setInstructorReverse(uint8_t state);
 void setInstructorLeft(uint8_t state);
 void setInstructorRight(uint8_t state);
 
-//user doesn't need to define this function, but does need to call it from their own interrupt
-//triggered by the falling edge of the IRQ pin from the nordic chip
+//The implementation of nordic_IRQ() is in nordic_driver.c
+//nordic_IRQ() is called from ISR(PORTH_INT0_vect), triggered by the falling edge of the IRQ pin from the nordic chip
 uint8_t nordic_IRQ(void);
 
-//already defined, callable by user
+//Implementations of ClearLastPacket and SetInstructorRemote are in nordic_driver.c
 void ClearLastPacket(void);
 void SetInstructorRemote(void);
 

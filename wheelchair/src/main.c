@@ -39,8 +39,37 @@ typedef enum {
 
 double PLATFORM_COUNT;
 //static char GSTR[64];
-const char *byte_to_binary(int x);
-void getStateStr(states state, char *str);
+/*
+static void byte_to_binary(char * b, int x)
+{
+	b[0] = '\0';
+
+	uint8_t z;
+	for (z = 0x80; z > 0; z >>= 1)
+	{
+		strcat(b, ((x & z) == z) ? "1" : "0");
+	}
+}
+*/
+/*
+static void getStateStr(states state, char *str)
+{
+	switch(state) {
+		case IDLE:
+		strcpy(str, "IDLE");
+		break;
+		case MOVE:
+		strcpy(str, "MOVE");
+		break;
+		case LOAD:
+		strcpy(str, "LOAD");
+		break;
+		default:
+		strcpy(str, "ERR ");
+		break;
+	}
+}
+*/
 
 /*! \brief Main function
  *
@@ -89,20 +118,22 @@ int main( void )
 /*
 	//TEST3 WIRELESS COMMUNICATION
 	while(1) {
+		WDT_Reset();
 		//check for received data
 
 		if(nordic_GetNewPacket(&packet) != 0) {
-
-			printf("RX 0b%s", byte_to_binary(packet.data.array[0]));
+			char b[9];
+			byte_to_binary(b, packet.data.array[0]);
+			printf("RX 0b%s", b);
 			//printf("RX 0x%02X", packet.data.array[0]);
 			for(i = 1; i < sizeof(packet.data.array); i++) {
 				printf(", %3d", packet.data.array[i]);
 			}
 			printf("\n");
-			PORTK.OUTSET = PIN5_bm;
-			_delay_ms(20);
-			PORTK.OUTCLR = PIN5_bm;
-			_delay_ms(20);
+			//PORTK.OUTSET = PIN5_bm;
+			//_delay_ms(20);
+			//PORTK.OUTCLR = PIN5_bm;
+			//_delay_ms(20);
 		}
 	}
 */
@@ -275,35 +306,3 @@ int main( void )
 	}
 	return 1;
 }
-
-void getStateStr(states state, char *str)
-{
-	switch(state) {
-	case IDLE:
-		strcpy(str, "IDLE");
-		break;
-	case MOVE:
-			strcpy(str, "MOVE");
-			break;
-	case LOAD:
-			strcpy(str, "LOAD");
-			break;
-	default:
-			strcpy(str, "ERR ");
-			break;
-	}
-}
-
-const char *byte_to_binary(int x)
-{
-    static char b[9];
-    b[0] = '\0';
-
-    uint8_t z;
-    for (z = 0x80; z > 0; z >>= 1)
-    {
-        strcat(b, ((x & z) == z) ? "1" : "0");
-    }
-    return b;
-}
-
