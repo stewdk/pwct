@@ -45,17 +45,17 @@ void dbgUSARTinit(void)
 {
 	stdout = &mystdout;
 
-	/* This PORT setting is only valid to USARTC0 if other USARTs is used a
+	/* This PORT setting is only valid to USARTD0 if other USARTs is used a
 	 * different PORT and/or pins are used. */
   	/* PD3 (TXD0) as output. */
 	PORTD.DIRSET   = PIN3_bm;
 	/* PD2 (RXD0) as input. */
 	PORTD.DIRCLR   = PIN2_bm;
 
-	/* Use USARTC0 and initialize buffers. */
+	/* Use USARTD0 and initialize buffers. */
 	USART_InterruptDriver_Initialize(&USART_data, &USARTD0, USART_DREINTLVL_LO_gc);
 
-	/* USARTC0, 8 Data bits, No Parity, 1 Stop bit. */
+	/* USARTD0, 8 Data bits, No Parity, 1 Stop bit. */
 	USART_Format_Set(USART_data.usart, USART_CHSIZE_8BIT_gc,
                      USART_PMODE_DISABLED_gc, false);
 
@@ -66,7 +66,10 @@ void dbgUSARTinit(void)
 	//USART_Baudrate_Set(USART_data.usart, 1047 , -6);
 
 	/* Set Baudrate to 38400 bps */
-	USART_Baudrate_Set(USART_data.usart, 3269 , -6);
+	//USART_Baudrate_Set(USART_data.usart, 3269 , -6);
+
+	/* Set Baudrate to 9600 bps */
+	USART_Baudrate_Set(USART_data.usart, 3317 , -4);
 
 	/* Enable both RX and TX. */
 	USART_Rx_Enable(USART_data.usart);

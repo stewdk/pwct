@@ -9,13 +9,12 @@
 #ifndef TEST_H_
 #define TEST_H_
 
-typedef enum {
-	IDLE, MOVE, LOAD
-} states;
+#include "util.h"
 
 void getStateStr(states state, char *str);
 void testNordicWireless(void);
 void testInputs(void);
+void testMotorDriver(void);
 
 void hardWireControls(void); // Warning: possibly obsolete, untested test
 void testBumpers(void); // Warning: definitely obsolete

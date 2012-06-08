@@ -67,7 +67,7 @@ int main( void )
 //	initBumpers();
 	initPWCTio();
 
-	/* Enable all three levels global interrupts. */
+	// Enable global interrupts.
 	sei();
 
 	printf("\n\rReset\n\r");
@@ -80,6 +80,8 @@ int main( void )
 	//testNordicWireless();
 
 	//testInputs();
+
+	//testMotorDriver();
 
 	//Run Operational State Machine
 	while(1) {

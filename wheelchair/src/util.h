@@ -8,6 +8,10 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+typedef enum {
+	IDLE, MOVE, LOAD
+} states;
+
 void dbgLEDinit(void);
 void dbgLEDset(void);
 void dbgLEDclr(void);

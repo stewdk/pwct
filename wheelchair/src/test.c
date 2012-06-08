@@ -13,6 +13,7 @@
 #include "PWCT_io.h"
 #include "linear_actuator.h"
 #include "bumper.h"
+#include "motor_driver.h"
 
 void getStateStr(states state, char *str)
 {
@@ -89,6 +90,33 @@ void testInputs(void)
 				switchState[24], switchState[25], switchState[26], switchState[27],
 				switchState[28]);
 		_delay_ms(250);
+	}
+}
+
+// Test the motor driver
+void testMotorDriver(void)
+{
+	sabertooth_packet packet;
+	packet.parts.address = 128;
+	packet.parts.command = 0;
+	while (1)
+	{
+		WDT_Reset();
+
+		packet.parts.data = 20;
+		sendMotorPacket(&packet);
+
+		_delay_ms(450);
+		WDT_Reset();
+		_delay_ms(450);
+		WDT_Reset();
+
+		packet.parts.data = 0;
+		sendMotorPacket(&packet);
+
+		_delay_ms(450);
+		WDT_Reset();
+		_delay_ms(450);
 	}
 }
 
