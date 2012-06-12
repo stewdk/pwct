@@ -96,24 +96,50 @@ void testInputs(void)
 // Test the motor driver
 void testMotorDriver(void)
 {
-	sabertooth_packet packet;
-	packet.parts.address = 128;
-	packet.parts.command = 0;
+	sendMotorCommand(0, 0);
+	sendMotorCommand(4, 0);
 	while (1)
 	{
 		WDT_Reset();
 
-		packet.parts.data = 20;
-		sendMotorPacket(&packet);
+		int i;
+		for (i = 0; i < 20; i++)
+		{
+			sendMotorCommand(0, 60);
+			_delay_ms(100);
+			WDT_Reset();
+		}
+		for (i = 0; i < 20; i++)
+		{
+			sendMotorCommand(0, 0);
+			_delay_ms(100);
+			WDT_Reset();
+		}
 
-		_delay_ms(450);
+		for (i = 0; i <= 60; i++)
+		{
+			WDT_Reset();
+			sendMotorCommand(0, i);
+			sendMotorCommand(4, i);
+			_delay_ms(20);
+		}
+
+		WDT_Reset();
+		_delay_ms(100);
+
+		for (; i >= 0; i--)
+		{
+			WDT_Reset();
+			sendMotorCommand(0, i);
+			sendMotorCommand(4, i);
+			_delay_ms(20);
+		}
+
 		WDT_Reset();
 		_delay_ms(450);
 		WDT_Reset();
-
-		packet.parts.data = 0;
-		sendMotorPacket(&packet);
-
+		_delay_ms(450);
+		WDT_Reset();
 		_delay_ms(450);
 		WDT_Reset();
 		_delay_ms(450);

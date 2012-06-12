@@ -19,9 +19,12 @@ typedef union {
 	} parts;
 } sabertooth_packet;
 
+#define SABERTOOTH_ADDRESS 128
+
 void initMotorDriver(void);
 void motorEStop(void);
 void resetMotorEStop(void);
 void sendMotorPacket(sabertooth_packet *packet);
+void sendMotorCommand(uint8_t command, uint8_t data);
 
 #endif /* MOTOR_DRIVER_H_ */

@@ -48,6 +48,17 @@ void initMotorDriver(void) {
 	USART_Tx_Enable(USARTD1_data.usart);
 
 	PMIC.CTRL |= PMIC_HILVLEX_bm;
+
+	// Let's hope that global interrupts are already enabled...
+
+	// Set minimum voltage to 18V
+	sendMotorCommand(2, 60);
+
+	// Enable serial timeout 500 ms
+	sendMotorCommand(14, 5);
+
+	// Enable ramping
+	sendMotorCommand(16, 14);
 }
 
 void motorEStop(void)
@@ -63,7 +74,6 @@ void resetMotorEStop(void)
 
 void sendMotorPacket(sabertooth_packet *packet)
 {
-	packet->parts.checksum = (packet->parts.address + packet->parts.command + packet->parts.data) & 0x7F;
 	uint8_t i = 0;
 	while (i < sizeof(packet->array))
 	{
@@ -72,6 +82,16 @@ void sendMotorPacket(sabertooth_packet *packet)
 			i++;
 		}
 	}
+}
+
+void sendMotorCommand(uint8_t command, uint8_t data)
+{
+	sabertooth_packet packet;
+	packet.parts.address = SABERTOOTH_ADDRESS;
+	packet.parts.command = command;
+	packet.parts.data = data;
+	packet.parts.checksum = (packet.parts.address + packet.parts.command + packet.parts.data) & 0x7F;
+	sendMotorPacket(&packet);
 }
 
 ISR(USARTD1_DRE_vect)

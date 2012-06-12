@@ -31,7 +31,7 @@
 #include "../atmel/wdt_driver.h"
 #include "motor_driver.h"
 #include "lcd_driver.h"
-#include "test.h"
+//#include "test.h"
 
 #define ACTUATOR_THRESHOLD 10000
 
@@ -57,7 +57,9 @@ int main( void )
 	//set clock as internal 32MHz RC oscillator
 	CLKSYS_Main_ClockSource_Select( CLK_SCLKSEL_RC32M_gc );
 
-	WDT_EnableAndSetTimeout(WDT_PER_512CLK_gc);	//set watchdog timer for 0.5s period
+	// Enable global interrupts.
+	sei();
+	initMotorDriver();
 
 	dbgLEDinit();
 	dbgUSARTinit();
@@ -67,15 +69,13 @@ int main( void )
 //	initBumpers();
 	initPWCTio();
 
-	// Enable global interrupts.
-	sei();
-
-	printf("\n\rReset\n\r");
-
 	nordic_Initialize(1);
 
-	initMotorDriver();
 	initLCDDriver();
+
+	WDT_EnableAndSetTimeout(WDT_PER_512CLK_gc);	//set watchdog timer for 0.5s period
+
+	printf("\nReset\n");
 
 	//testNordicWireless();
 
