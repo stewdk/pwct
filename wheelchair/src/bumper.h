@@ -36,4 +36,6 @@ void PrintRightCornerBumper(void);
 void PrintLeftCornerBumper(void);
 void PrintRightFrontBumper(void);
 
+void ResetBumperThreshold(void);
+
 #endif /* BUMPER_H_ */

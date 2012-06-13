@@ -8,6 +8,7 @@
 #include <string.h>
 #include "nordic_driver.h"
 #include "nordic_hardware_specific.h"
+#include "PWCT_io.h"
 
 #define USE_ENHANCED_SHOCKBURST	1
 
@@ -15,12 +16,6 @@ static volatile int8_t RX_DATA_READY_FLAG = 0;
 static volatile int8_t TX_DATA_SENT_FLAG = 0;
 static volatile int8_t MAX_RETRANSMITS_READY_FLAG = 0;
 static volatile NORDIC_PACKET LAST_PACKET;
-
-static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status);
-int8_t nordic_WriteRegister(uint8_t reg, uint8_t data, uint8_t *status);
-int8_t nordic_WriteRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status);
-int8_t nordic_ReadRegister(uint8_t reg, uint8_t *data, uint8_t *status);
-int8_t nordic_ReadRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status);
 
 static void nordic_CopyPacket(NORDIC_PACKET* dest, volatile NORDIC_PACKET* src)
 {
@@ -43,6 +38,78 @@ static void nordic_ClearPacket(volatile NORDIC_PACKET* packet)
 	packet->rxpipe = 0;
 	AVR_LEAVE_CRITICAL_REGION();
 }
+
+//make sure txdata and rxdata are at least of length dataSize
+static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status)
+{
+	uint8_t i;
+	uint8_t rx;
+	uint8_t data;
+	//uint8_t previousMode = 0;
+	uint8_t statusFake;
+	int8_t err = 0;
+
+	//check to make sure parameters are valid
+	if(status == NULL) {
+		status = &statusFake;
+	}
+
+	//previousMode = standbyMode();
+
+	//	_delay_us(4);
+	chipSelect();
+
+	//send command
+	*status = SPI_TransceiveByte(cmd);
+
+	//send/receive LSByte first
+	if(dataSize != 0) {
+		i = dataSize;
+		do {
+			i--;
+			if(txdata == NULL) {
+				data = 0;
+			}
+			else {
+				data = txdata[i];
+			}
+			rx = SPI_TransceiveByte(data);
+			if(rxdata != NULL) {
+				rxdata[i] = rx;
+			}
+		} while(i != 0);
+	}
+
+	chipRelease();
+
+	return err;
+}
+
+//Write a register that contains a single byte of data
+static int8_t nordic_WriteRegister(uint8_t reg, uint8_t data, uint8_t *status)
+{
+	return nordic_SendCommand(W_REGISTER_nCmd | reg, &data, NULL, 1, status);
+}
+
+//Writes a register with N bytes of data
+static int8_t nordic_WriteRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status)
+{
+	return nordic_SendCommand(W_REGISTER_nCmd | reg, data, NULL, size, status);
+}
+
+//Read a register that contains a single byte of data
+static int8_t nordic_ReadRegister(uint8_t reg, uint8_t *data, uint8_t *status)
+{
+	return nordic_SendCommand(R_REGISTER_nCmd | reg, NULL, data, 1, status);
+}
+
+//Read a register with N bytes of data
+/*
+static int8_t nordic_ReadRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status)
+{
+	return nordic_SendCommand(R_REGISTER_nCmd | reg, NULL, data, size, status);
+}
+*/
 
 static void setDirTx(void)
 {
@@ -160,7 +227,7 @@ int8_t nordic_Initialize(uint8_t receiver)
 	return err;
 }
 
-inline uint8_t nordic_GetStatus(void)
+uint8_t nordic_GetStatus(void)
 {
 	uint8_t status;
 	nordic_SendCommand(NOP_nCmd, NULL, NULL, 0, &status);
@@ -235,76 +302,6 @@ void nordic_TransmitData(NORDIC_PACKET * packet)
     standbyMode();
 }
 
-//make sure txdata and rxdata are at least of length dataSize
-static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status)
-{
-	uint8_t i;
-	uint8_t rx;
-	uint8_t data;
-	//uint8_t previousMode = 0;
-	uint8_t statusFake;
-	int8_t err = 0;
-
-	//check to make sure parameters are valid
-	if(status == NULL) {
-		status = &statusFake;
-	}
-
-	//previousMode = standbyMode();
-
-//	_delay_us(4);
-	chipSelect();
-
-	//send command
-	*status = SPI_TransceiveByte(cmd);
-
-	//send/receive LSByte first
-	if(dataSize != 0) {
-		i = dataSize;
-		do {
-			i--;
-			if(txdata == NULL) {
-				data = 0;
-			}
-			else {
-				data = txdata[i];
-			}
-			rx = SPI_TransceiveByte(data);
-			if(rxdata != NULL) {
-				rxdata[i] = rx;
-			}
-		} while(i != 0);
-	}
-
-	chipRelease();
-
-	return err;
-}
-
-//Write a register that contains a single byte of data
-int8_t nordic_WriteRegister(uint8_t reg, uint8_t data, uint8_t *status)
-{
-	return nordic_SendCommand(W_REGISTER_nCmd | reg, &data, NULL, 1, status);
-}
-
-//Writes a register with N bytes of data
-int8_t nordic_WriteRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status)
-{
-	return nordic_SendCommand(W_REGISTER_nCmd | reg, data, NULL, size, status);
-}
-
-//Read a register that contains a single byte of data
-int8_t nordic_ReadRegister(uint8_t reg, uint8_t *data, uint8_t *status)
-{
-	return nordic_SendCommand(R_REGISTER_nCmd | reg, NULL, data, 1, status);
-}
-
-//Read a register with N bytes of data
-int8_t nordic_ReadRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status)
-{
-	return nordic_SendCommand(R_REGISTER_nCmd | reg, NULL, data, size, status);
-}
-
 //powers down nordic chip
 void nordic_PowerDown(void)
 {
@@ -330,7 +327,7 @@ void nordic_PowerUp(void)
 }
 
 //Nordic IRQ pin interrupt
-inline uint8_t nordic_IRQ(void)
+uint8_t nordic_IRQ(void)
 {
 	uint8_t status, previousMode, size = 0;
 	uint8_t data[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};

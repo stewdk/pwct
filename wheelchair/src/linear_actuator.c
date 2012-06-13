@@ -198,17 +198,19 @@ int8_t StopPlatform(void)
 
 //Returns 0 for no overcurrent, else bitwise mask for which linear actuator is over currenting
 // 0x01, 0x02, 0x04, 0x08
-int8_t isOverCurrent(void)
+/*
+static int8_t isOverCurrent(void)
 {
 	return OVERCURRENT_FLAG;
 }
+*/
 
 void PrintLACurrents(void)
 {
 	printf("1:%5d 2:%5d 3:%5d 4:%5d F:%d\n\r", adc_result0, adc_result1, adc_result2, adc_result3, OVERCURRENT_FLAG);
 }
 
-void checkForOverCurrent(int16_t adc_result, uint8_t LAnum)
+static void checkForOverCurrent(int16_t adc_result, uint8_t LAnum)
 {
 	if(adc_result > CURRENT_THRESHOLD_MAX || adc_result < CURRENT_THRESHOLD_MIN) {
 		StopPlatform();

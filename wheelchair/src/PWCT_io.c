@@ -4,15 +4,17 @@
  *  Created on: Mar 28, 2011
  *      Author: grant
  */
+
+#include <util/delay.h>
+#include <stdio.h>
 #include "../atmel/avr_compiler.h"
 #include "../atmel/TC_driver.h"
 #include "../atmel/port_driver.h"
 #include "../atmel/pmic_driver.h"
 #include "nordic_driver.h"
-#include <util/delay.h>
 #include "util.h"
 #include "PWCT_io.h"
-#include <stdio.h>
+#include "bumper.h"
 
 //debounce timers 1tick = 8us
 //1250 ticks = 10ms
@@ -101,46 +103,6 @@ static uint8_t BUMPER_RIGHT = 1;
 static uint8_t PROP_JOY_DETECT;
 static uint8_t INVERT_SWITCH;
 static uint8_t LIMIT_SWITCH;
-
-void PulsePGDTEstop(void);
-
-void GetInputStates(uint8_t * states)
-{
-//	printf("|      Remote          |                Panel               |Limit|             Bumpers              |\r\n");
-//	printf("| Joystck | LA  | Estp | Buddy Btn | Joystick  | Estp |LA  | OvrRd|     | 1    2    3    4    5    6    7  |\r\n");
-//	printf("| U D L R | U D |      | U D L R S | U D L R S |      |U D |      |     |                                  |\r\n");
-
-	*states++ = INSTRUCTOR_FORWARD;
-	*states++ = INSTRUCTOR_REVERSE;
-	*states++ = INSTRUCTOR_LEFT;
-	*states++ = INSTRUCTOR_RIGHT;
-	*states++ = INSTRUCTOR_LA_UP;
-	*states++ = INSTRUCTOR_LA_DOWN;
-	*states++ = INSTRUCTOR_ESTOP;
-	*states++ = BB_FORWARD;
-	*states++ = BB_REVERSE;
-	*states++ = BB_LEFT;
-	*states++ = BB_RIGHT;
-	*states++ = BB_FIFTH;
-	*states++ = STUDENT_FORWARD;
-	*states++ = STUDENT_REVERSE;
-	*states++ = STUDENT_LEFT;
-	*states++ = STUDENT_RIGHT;
-	*states++ = STUDENT_FIFTH;
-	*states++ = ESTOP;
-	*states++ = PANEL_LA_UP;
-	*states++ = PANEL_LA_DOWN;
-	*states++ = PANEL_BUMPER_OVERRIDE;
-	*states++ = LIMIT_SWITCH;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-
-}
 
 void initPWCTio(void)
 {
@@ -238,6 +200,44 @@ void initPWCTio(void)
 	INSTRUCTOR_ESTOP = 0;
 
 	PMIC_EnableMediumLevel();
+}
+
+void GetInputStates(uint8_t * states)
+{
+	//	printf("|      Remote          |                Panel               |Limit|             Bumpers              |\r\n");
+	//	printf("| Joystck | LA  | Estp | Buddy Btn | Joystick  | Estp |LA  | OvrRd|     | 1    2    3    4    5    6    7  |\r\n");
+	//	printf("| U D L R | U D |      | U D L R S | U D L R S |      |U D |      |     |                                  |\r\n");
+
+	*states++ = INSTRUCTOR_FORWARD;
+	*states++ = INSTRUCTOR_REVERSE;
+	*states++ = INSTRUCTOR_LEFT;
+	*states++ = INSTRUCTOR_RIGHT;
+	*states++ = INSTRUCTOR_LA_UP;
+	*states++ = INSTRUCTOR_LA_DOWN;
+	*states++ = INSTRUCTOR_ESTOP;
+	*states++ = BB_FORWARD;
+	*states++ = BB_REVERSE;
+	*states++ = BB_LEFT;
+	*states++ = BB_RIGHT;
+	*states++ = BB_FIFTH;
+	*states++ = STUDENT_FORWARD;
+	*states++ = STUDENT_REVERSE;
+	*states++ = STUDENT_LEFT;
+	*states++ = STUDENT_RIGHT;
+	*states++ = STUDENT_FIFTH;
+	*states++ = ESTOP;
+	*states++ = PANEL_LA_UP;
+	*states++ = PANEL_LA_DOWN;
+	*states++ = PANEL_BUMPER_OVERRIDE;
+	*states++ = LIMIT_SWITCH;
+	*states++ = 0;
+	*states++ = 0;
+	*states++ = 0;
+	*states++ = 0;
+	*states++ = 0;
+	*states++ = 0;
+	*states++ = 0;
+
 }
 
 void SampleInputs(void)

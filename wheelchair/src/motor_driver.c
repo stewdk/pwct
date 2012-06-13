@@ -72,7 +72,7 @@ void resetMotorEStop(void)
 	PORTD.OUTSET = PIN6_bm;
 }
 
-void sendMotorPacket(sabertooth_packet *packet)
+static void sendMotorPacket(sabertooth_packet *packet)
 {
 	uint8_t i = 0;
 	while (i < sizeof(packet->array))

@@ -101,8 +101,9 @@ void dbgPutStr(char *str)
 	}
 }
 
+/*
 //0 for success, -1 for no available bytes
-int8_t dbgGetCharNonblocking(char *c)
+static int8_t dbgGetCharNonblocking(char *c)
 {
 	int8_t err = 0;
 
@@ -119,7 +120,7 @@ int8_t dbgGetCharNonblocking(char *c)
 //max length is the max number of characters in string, so actually string length
 //would be maxLength+1
 //return 0 success, -1  didn't reach end of string
-int8_t dbgGetStrNonblocking(char *str, uint8_t maxLength)
+static int8_t dbgGetStrNonblocking(char *str, uint8_t maxLength)
 {
 	uint8_t i = 0, err = 0;
 
@@ -137,6 +138,7 @@ int8_t dbgGetStrNonblocking(char *str, uint8_t maxLength)
 
 	return err;
 }
+*/
 
 /*! \brief Receive complete interrupt service routine.
  *

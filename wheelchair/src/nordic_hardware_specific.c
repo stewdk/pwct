@@ -4,10 +4,12 @@
  *  Created on: Apr 12, 2011
  *      Author: grant
  */
-#include "nordic_hardware_specific.h"
-#include "util.h"
+
 #include "../atmel/TC_driver.h"
 #include "../atmel/spi_driver.h"
+#include "nordic_hardware_specific.h"
+#include "nordic_driver.h"
+#include "util.h"
 
 #define NORDIC_INTERNAL		1
 #define NORDIC_MODULE		2
