@@ -16,6 +16,9 @@ void SampleInputs(void);
 void StopMove(void);
 void Move(uint8_t moveDir);
 uint8_t GetMoveDirection(void);
+uint8_t getPANEL_BUMPER_OVERRIDE(void);
+uint16_t getWiredPropJoySpeed(void);
+uint16_t getWiredPropJoyDirection(void);
 
 void setInstructorEStop(uint8_t state);
 void setInstructorLAUp(uint8_t state);

@@ -52,13 +52,13 @@ void initMotorDriver(void) {
 	// Let's hope that global interrupts are already enabled...
 
 	// Set minimum voltage to 18V
-	sendMotorCommand(2, 60);
+	sendMotorCommand(MOTOR_CMD_MIN_VOLTAGE, 60);
 
 	// Enable serial timeout 500 ms
-	sendMotorCommand(14, 5);
+	sendMotorCommand(MOTOR_CMD_SERIAL_TIMEOUT, 5);
 
-	// Enable ramping
-	sendMotorCommand(16, 14);
+	// Enable ramping 4.2s
+	sendMotorCommand(MOTOR_CMD_RAMPING, 14);
 }
 
 void motorEStop(void)

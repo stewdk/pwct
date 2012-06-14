@@ -12,8 +12,16 @@
 #include "../atmel/wdt_driver.h"
 #include "PWCT_io.h"
 #include "linear_actuator.h"
-#include "bumper.h"
 #include "motor_driver.h"
+
+void testPropJoy(void)
+{
+	while(1) {
+		WDT_Reset();
+		printf("Speed: %d Dir: %d\n", getWiredPropJoySpeed(), getWiredPropJoyDirection());
+		_delay_ms(200);
+	}
+}
 
 void getStateStr(states state, char *str)
 {
@@ -70,6 +78,7 @@ void testNordicWireless(void)
 	}
 }
 
+/*
 // test inputs
 void testInputs(void)
 {
@@ -92,12 +101,13 @@ void testInputs(void)
 		_delay_ms(250);
 	}
 }
+*/
 
 // Test the motor driver
 void testMotorDriver(void)
 {
-	sendMotorCommand(0, 0);
-	sendMotorCommand(4, 0);
+	sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MOTOR_1, 0);
+	sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MOTOR_2, 0);
 	while (1)
 	{
 		WDT_Reset();
@@ -105,13 +115,13 @@ void testMotorDriver(void)
 		int i;
 		for (i = 0; i < 20; i++)
 		{
-			sendMotorCommand(0, 60);
+			sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MOTOR_1, 60);
 			_delay_ms(100);
 			WDT_Reset();
 		}
 		for (i = 0; i < 20; i++)
 		{
-			sendMotorCommand(0, 0);
+			sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MOTOR_1, 0);
 			_delay_ms(100);
 			WDT_Reset();
 		}
@@ -119,8 +129,8 @@ void testMotorDriver(void)
 		for (i = 0; i <= 60; i++)
 		{
 			WDT_Reset();
-			sendMotorCommand(0, i);
-			sendMotorCommand(4, i);
+			sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MOTOR_1, i);
+			sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MOTOR_2, i);
 			_delay_ms(20);
 		}
 
@@ -130,8 +140,8 @@ void testMotorDriver(void)
 		for (; i >= 0; i--)
 		{
 			WDT_Reset();
-			sendMotorCommand(0, i);
-			sendMotorCommand(4, i);
+			sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MOTOR_1, i);
+			sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MOTOR_2, i);
 			_delay_ms(20);
 		}
 
@@ -146,6 +156,7 @@ void testMotorDriver(void)
 	}
 }
 
+/*
 // Warning: possibly obsolete, untested test
 // hard wire controls
 void hardWireControls(void)
@@ -211,3 +222,4 @@ void testBumpers(void)
 		_delay_ms(100);
 	}
 }
+*/

@@ -72,7 +72,7 @@ void initLinearActuators(void)
 	ADC_ConvMode_and_Resolution_Config(&ADCB, ADC_ConvMode_Signed, ADC_RESOLUTION_12BIT_gc);
 
 	// The ADC has different voltage reference options, controlled by the REFSEL bits in the
-	// REFCTRL register. Here the internal reference is selected
+	// REFCTRL register. Here an external reference is selected
 	ADC_Reference_Config(&ADCB, ADC_REFSEL_AREFA_gc);
 
 	// The clock into the ADC decide the maximum sample rate and the conversion time, and

@@ -11,7 +11,7 @@
  *      most functions are just a few lines of code, and the function call
  *      overhead would decrease code performance. The driver is intended for
  *      rapid prototyping and documentation purposes for getting started with
- *      the XMEGA ADC module.
+ *      the XMEGA USART module.
  *
  *      For size and/or speed critical code, it is recommended to copy the
  *      function contents directly into your application instead of making

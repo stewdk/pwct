@@ -11,10 +11,10 @@
 #include "../atmel/TC_driver.h"
 #include "../atmel/port_driver.h"
 #include "../atmel/pmic_driver.h"
+#include "../atmel/adc_driver.h"
 #include "nordic_driver.h"
 #include "util.h"
 #include "PWCT_io.h"
-#include "bumper.h"
 
 //debounce timers 1tick = 8us
 //1250 ticks = 10ms
@@ -24,7 +24,6 @@
 //31250 ticks = 250ms
 #define PGDT_ESTOP_PULSE_PERIOD 31250
 
-#define DEBOUNCE_BUTTONS	0
 #define ENABLE_INSTRUCTOR_REMOTE_LINEAR_ACTUATOR_CONTROL	0
 
 /* Input/Output List
@@ -96,89 +95,72 @@ static uint8_t ESTOP;
 static uint8_t PANEL_LA_UP;
 static uint8_t PANEL_LA_DOWN;
 static uint8_t PANEL_BUMPER_OVERRIDE;
-static uint8_t BUMPER_FORWARD = 1;
-static uint8_t BUMPER_REVERSE = 1;
-static uint8_t BUMPER_LEFT = 1;
-static uint8_t BUMPER_RIGHT = 1;
 static uint8_t PROP_JOY_DETECT;
 static uint8_t INVERT_SWITCH;
 static uint8_t LIMIT_SWITCH;
 
+static volatile uint16_t gWiredPropJoySpeed;
+static volatile uint16_t gWiredPropJoyDirection;
+
+static void joystickADCsetup(void)
+{
+	// ADC configuration for proportional joystick
+	ADC_CalibrationValues_Load(&ADCA);
+
+	ADC_ConvMode_and_Resolution_Config(&ADCA, ADC_ConvMode_Unsigned, ADC_RESOLUTION_12BIT_gc);
+
+	// External reference on PA0/AREFA
+	ADC_Reference_Config(&ADCA, ADC_REFSEL_AREFA_gc);
+	ADC_Prescaler_Config(&ADCA, ADC_PRESCALER_DIV512_gc);
+
+	// In Unsigned Single-ended mode, the conversion range is from ground to the reference voltage.
+	ADC_Ch_InputMode_and_Gain_Config(&ADCA.CH0, ADC_CH_INPUTMODE_SINGLEENDED_gc, ADC_DRIVER_CH_GAIN_NONE);
+	ADC_Ch_InputMode_and_Gain_Config(&ADCA.CH1, ADC_CH_INPUTMODE_SINGLEENDED_gc, ADC_DRIVER_CH_GAIN_NONE);
+
+	ADC_Ch_InputMux_Config(&ADCA.CH0, ADC_CH_MUXPOS_PIN1_gc, 0);
+	ADC_Ch_InputMux_Config(&ADCA.CH1, ADC_CH_MUXPOS_PIN2_gc, 0);
+
+	ADC_FreeRunning_Enable(&ADCA);
+	ADC_SweepChannels_Config(&ADCA, ADC_SWEEP_01_gc);
+
+	//ADC_Events_Config(&ADCA, ADC_EVSEL_0123_gc, ADC_EVACT_SYNCHSWEEP_gc );
+	ADC_Ch_Interrupts_Config(&ADCA.CH0, ADC_CH_INTMODE_COMPLETE_gc, ADC_CH_INTLVL_MED_gc);
+	ADC_Ch_Interrupts_Config(&ADCA.CH1, ADC_CH_INTMODE_COMPLETE_gc, ADC_CH_INTLVL_MED_gc);
+
+	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
+
+	ADC_Enable(&ADCA);
+	ADC_Wait_32MHz(&ADCA);
+}
+
 void initPWCTio(void)
 {
 	//turn off timers
-	TC0_ConfigClockSource( &TCC0, TC_CLKSEL_OFF_gc );
-	TC1_ConfigClockSource( &TCC1, TC_CLKSEL_OFF_gc );
-	TC0_ConfigClockSource( &TCD0, TC_CLKSEL_OFF_gc );
-	TC1_ConfigClockSource( &TCD1, TC_CLKSEL_OFF_gc );
-	TC1_ConfigClockSource( &TCE1, TC_CLKSEL_OFF_gc );
 	TC1_ConfigClockSource( &TCF1, TC_CLKSEL_OFF_gc );
 
 	// Set the TC period.
-	TC_SetPeriod( &TCC0, 0xFFFF );
-	TC_SetPeriod( &TCC1, 0xFFFF );
-	TC_SetPeriod( &TCD0, 0xFFFF );
-	TC_SetPeriod( &TCD1, 0xFFFF );
-	TC_SetPeriod( &TCE1, 0xFFFF );
 	TC_SetPeriod( &TCF1, 0xFFFF );
 
 	//Set timer in normal mode
-	TC0_ConfigWGM( &TCC0, TC_WGMODE_NORMAL_gc );
-	TC1_ConfigWGM( &TCC1, TC_WGMODE_NORMAL_gc );
-	TC0_ConfigWGM( &TCD0, TC_WGMODE_NORMAL_gc );
-	TC1_ConfigWGM( &TCD1, TC_WGMODE_NORMAL_gc );
-	TC1_ConfigWGM( &TCE1, TC_WGMODE_NORMAL_gc );
 	TC1_ConfigWGM( &TCF1, TC_WGMODE_NORMAL_gc );
 
-#if DEBOUNCE_BUTTONS
-	//set up compare interrupts
-	TC0_SetCCAIntLevel(&TCC0, TC_CCAINTLVL_MED_gc);
-	TC0_SetCCBIntLevel(&TCC0, TC_CCBINTLVL_MED_gc);
-	TC0_SetCCCIntLevel(&TCC0, TC_CCCINTLVL_MED_gc);
-	TC0_SetCCDIntLevel(&TCC0, TC_CCDINTLVL_MED_gc);
-	TC1_SetCCAIntLevel(&TCC1, TC_CCAINTLVL_MED_gc);
-	TC1_SetCCBIntLevel(&TCC1, TC_CCBINTLVL_MED_gc);
-	TC0_SetCCAIntLevel(&TCD0, TC_CCAINTLVL_MED_gc);
-	TC0_SetCCBIntLevel(&TCD0, TC_CCBINTLVL_MED_gc);
-	TC0_SetCCCIntLevel(&TCD0, TC_CCCINTLVL_MED_gc);
-	TC0_SetCCDIntLevel(&TCD0, TC_CCDINTLVL_MED_gc);
-	TC1_SetCCAIntLevel(&TCD1, TC_CCAINTLVL_MED_gc);
-	TC1_SetCCBIntLevel(&TCD1, TC_CCBINTLVL_MED_gc);
-	TC1_SetCCAIntLevel(&TCE1, TC_CCAINTLVL_MED_gc);
-	TC1_SetCCBIntLevel(&TCE1, TC_CCBINTLVL_MED_gc);
-	TC1_SetCCAIntLevel(&TCF1, TC_CCAINTLVL_MED_gc);
-#endif
 	TC1_SetCCBIntLevel(&TCF1, TC_CCBINTLVL_MED_gc);
 
 	//start clocks
-	TC0_ConfigClockSource( &TCC0, TC_CLKSEL_DIV256_gc );
-	TC1_ConfigClockSource( &TCC1, TC_CLKSEL_DIV256_gc );
-	TC0_ConfigClockSource( &TCD0, TC_CLKSEL_DIV256_gc );
-	TC1_ConfigClockSource( &TCD1, TC_CLKSEL_DIV256_gc );
-	TC1_ConfigClockSource( &TCE1, TC_CLKSEL_DIV256_gc );
 	TC1_ConfigClockSource( &TCF1, TC_CLKSEL_DIV256_gc );
 
-	PORT_ConfigurePins( &PORTH, PIN6_bm | PIN7_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // BB fwd, BB rev
-	PORT_ConfigurePins( &PORTJ, 0xFF, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // remaining BB, switch joystick in
+	PORT_ConfigurePins( &PORTH, PIN6_bm | PIN7_bm,                     false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // BB fwd, BB rev
+	PORT_ConfigurePins( &PORTJ, 0xFF,                                  false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // remaining BB, switch joystick in
 	PORT_ConfigurePins( &PORTK, PIN0_bm | PIN1_bm | PIN3_bm | PIN7_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LA up, bumper override, LA down, Prop. Joy Detect
-	PORT_ConfigurePins( &PORTK, PIN2_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc ); // e-stop button
+	PORT_ConfigurePins( &PORTK, PIN2_bm,                               false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc ); // e-stop button
 	PORT_ConfigurePins( &PORTQ, PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LCD buttons
-	PORT_ConfigurePins( &PORTR, PIN0_bm | PIN1_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LCD button, invert switch
+	PORT_ConfigurePins( &PORTR, PIN0_bm | PIN1_bm,                     false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LCD button, invert switch
 
 	PORT_SetPinsAsInput( &PORTH, PIN6_bm | PIN7_bm);
 	PORT_SetPinsAsInput( &PORTJ, PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm | PIN4_bm | PIN5_bm | PIN6_bm | PIN7_bm );
 	PORT_SetPinsAsInput( &PORTK,  PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm | PIN7_bm);
 	PORT_SetPinsAsInput( &PORTQ,  PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm);
 	PORT_SetPinsAsInput( &PORTR,  PIN0_bm | PIN1_bm);
-#if DEBOUNCE_BUTTONS
-	//set up pin change interrupts
-	PORT_ConfigureInterrupt1( &PORTH, PORT_INT1LVL_MED_gc, PIN6_bm | PIN7_bm);
-	PORT_ConfigureInterrupt0( &PORTJ, PORT_INT0LVL_MED_gc, PIN0_bm | PIN1_bm | PIN2_bm | PIN7_bm);
-	PORT_ConfigureInterrupt1( &PORTJ, PORT_INT1LVL_MED_gc, PIN3_bm | PIN4_bm | PIN5_bm | PIN6_bm);
-	PORT_ConfigureInterrupt1( &PORTK, PORT_INT1LVL_MED_gc, PIN1_bm | PIN7_bm);
-	PORT_ConfigureInterrupt0( &PORTK, PORT_INT0LVL_MED_gc, PIN0_bm | PIN2_bm | PIN3_bm);
-	PORT_ConfigureInterrupt1( &PORTK, PORT_INT1LVL_MED_gc, PIN1_bm | PIN7_bm);
-#endif
 
 	//set outputs
 	PORTK.OUTCLR = PIN4_bm | PIN5_bm;	//leds off
@@ -186,6 +168,8 @@ void initPWCTio(void)
 	PORTK.DIRSET = PIN4_bm | PIN5_bm | PIN6_bm;
 	PORTH.OUTCLR = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm | PIN5_bm;	//switch joystick disabled
 	PORTH.DIRSET = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm | PIN5_bm;
+
+	joystickADCsetup();
 
 	//get default values
 	SampleInputs();
@@ -202,6 +186,7 @@ void initPWCTio(void)
 	PMIC_EnableMediumLevel();
 }
 
+/*
 void GetInputStates(uint8_t * states)
 {
 	//	printf("|      Remote          |                Panel               |Limit|             Bumpers              |\r\n");
@@ -239,11 +224,10 @@ void GetInputStates(uint8_t * states)
 	*states++ = 0;
 
 }
+*/
 
 void SampleInputs(void)
 {
-	static uint8_t estopDebounceFlg = 0;
-	static uint8_t EstopPulseSent = 0;
 	//uint8_t panelBumperOverrideOld;
 
 	//panelBumperOverrideOld = PANEL_BUMPER_OVERRIDE;
@@ -267,30 +251,6 @@ void SampleInputs(void)
 	LIMIT_SWITCH			= 0;
 
 	//printf("\rSTUDENT_FORWARD = %d  BB_FORWARD = %d  STUDENT_REVERSE = %d  BB_REVERSE = %d", STUDENT_FORWARD, BB_FORWARD, STUDENT_REVERSE, BB_REVERSE);
-
-	if(ESTOP) { // Not pressed
-		estopDebounceFlg = 0;
-		EstopPulseSent = 0;
-	}
-	else if(!EstopPulseSent) { // Pressed
-		estopDebounceFlg++;
-		if(estopDebounceFlg >= 3) {
-			PulsePGDTEstop();
-			EstopPulseSent = 1;
-		}
-	}
-
-	//set bumper override led
-	if(PANEL_BUMPER_OVERRIDE) {
-		PORTK.OUTCLR = PIN4_bm;
-	} else {
-		PORTK.OUTSET = PIN4_bm;
-	}
-
-	//check if panel bumper override was toggled
-	if(!PANEL_BUMPER_OVERRIDE) {
-		ResetBumperThreshold();
-	}
 }
 
 void StopMove(void)
@@ -418,6 +378,30 @@ uint8_t GetMoveDirection(void)
 
 	return moveDir;
 }
+
+uint8_t getPANEL_BUMPER_OVERRIDE(void)
+{
+	return PANEL_BUMPER_OVERRIDE;
+}
+
+uint16_t getWiredPropJoySpeed(void)
+{
+	uint16_t returnValue;
+	AVR_ENTER_CRITICAL_REGION();
+	returnValue = gWiredPropJoySpeed;
+	AVR_LEAVE_CRITICAL_REGION();
+	return returnValue;
+}
+
+uint16_t getWiredPropJoyDirection(void)
+{
+	uint16_t returnValue;
+	AVR_ENTER_CRITICAL_REGION();
+	returnValue = gWiredPropJoyDirection;
+	AVR_LEAVE_CRITICAL_REGION();
+	return returnValue;
+}
+
 void setInstructorEStop(uint8_t state)
 {
 	//make sure to only send one pulse
@@ -449,49 +433,6 @@ void setInstructorLeft(uint8_t state)
 void setInstructorRight(uint8_t state)
 {
 	INSTRUCTOR_RIGHT = state;
-}
-
-void PrintBumperStates(void)
-{
-	printf("Rv%d, Fw%d, Lt%d, Rt%d\n\r", BUMPER_REVERSE, BUMPER_FORWARD, BUMPER_LEFT, BUMPER_RIGHT);
-}
-
-void BumperForwardPressed(void)
-{
-	BUMPER_FORWARD = 0;
-}
-
-void BumperForwardReleased(void)
-{
-	BUMPER_FORWARD = 1;
-}
-
-void BumperReversePressed(void)
-{
-	BUMPER_REVERSE = 0;
-}
-
-void BumperReverseReleased(void)
-{
-	BUMPER_REVERSE = 1;
-}
-void BumperLeftPressed(void)
-{
-	BUMPER_LEFT = 0;
-}
-
-void BumperLeftReleased(void)
-{
-	BUMPER_LEFT = 1;
-}
-void BumperRightPressed(void)
-{
-	BUMPER_RIGHT = 0;
-}
-
-void BumperRightReleased(void)
-{
-	BUMPER_RIGHT = 1;
 }
 
 bool LimitSwitchPressed(void)
@@ -530,304 +471,12 @@ bool EmergencyStopPressed(void)
 	return !ESTOP;
 }
 
-/*******************************************************************************
- * Debounce Interrupts
- *******************************************************************************/
-ISR(PORTH_INT1_vect)
-{
-	uint8_t switchedPins = 0;
-
-	//BB_FORWARD				= PORTH.IN & PIN6_bm;
-	//BB_REVERSE				= PORTH.IN & PIN7_bm;
-
-	switchedPins = (BB_FORWARD | BB_REVERSE) ^ ((PIN6_bm | PIN7_bm) & PORTH.IN);
-
-	if((switchedPins & PIN6_bm) && !(TCC1.CTRLB & TC1_CCAEN_bm)) {	//BB_FORWARD
-		//start debounce timer
-		TC_SetCompareA(&TCC1, TCC1.CNT + DEBOUNCE_PERIOD);
-		TC1_EnableCCChannels( &TCC1, TC1_CCAEN_bm);
-	}
-	if((switchedPins & PIN7_bm) && !(TCC1.CTRLB & TC1_CCBEN_bm)) {	//BB_REVERSE
-		//start debounce timer
-		TC_SetCompareB(&TCC1, TCC1.CNT + DEBOUNCE_PERIOD);
-		TC1_EnableCCChannels( &TCC1, TC1_CCBEN_bm);
-	}
-}
-
-ISR(PORTJ_INT0_vect)
-{
-	uint8_t switchedPins = 0;
-
-	//BB_LEFT			PJ0
-	//BB_RIGHT			PJ1
-	//BB_FIFTH			PJ2
-	//STUDENT_FIFTH		PJ7
-	switchedPins = (BB_LEFT | BB_RIGHT | BB_FIFTH | STUDENT_FIFTH) ^ ((PIN0_bm | PIN1_bm | PIN2_bm | PIN7_bm) & PORTJ.IN);
-
-	if((switchedPins & PIN0_bm) && !(TCC0.CTRLB & TC0_CCAEN_bm)) {	//BB_LEFT
-		//start debounce timer
-		TC_SetCompareA(&TCC0, TCC0.CNT + DEBOUNCE_PERIOD);
-		TC0_EnableCCChannels( &TCC0, TC0_CCAEN_bm);
-	}
-	if((switchedPins & PIN1_bm) && !(TCC0.CTRLB & TC0_CCBEN_bm)) {	//BB_RIGHT
-		//start debounce timer
-		TC_SetCompareB(&TCC0, TCC0.CNT + DEBOUNCE_PERIOD);
-		TC0_EnableCCChannels( &TCC0, TC0_CCBEN_bm);
-	}
-	if((switchedPins & PIN2_bm) && !(TCC0.CTRLB & TC0_CCCEN_bm)) {	//BB_FIFTH
-		//start debounce timer
-		TC_SetCompareC(&TCC0, TCC0.CNT + DEBOUNCE_PERIOD);
-		TC0_EnableCCChannels( &TCC0, TC0_CCCEN_bm);
-	}
-	if((switchedPins & PIN7_bm) && !(TCC0.CTRLB & TC0_CCDEN_bm)) {	//STUDENT_FIFTH
-		//start debounce timer
-		TC_SetCompareD(&TCC0, TCC0.CNT + DEBOUNCE_PERIOD);
-		TC0_EnableCCChannels( &TCC0, TC0_CCDEN_bm);
-	}
-}
-
-ISR(PORTJ_INT1_vect)
-{
-	uint8_t switchedPins = 0;
-
-	//STUDENT_FORWARD	PJ3
-	//STUDENT_REVERSE	PJ4
-	//STUDENT_LEFT		PJ5
-	//STUDENT_RIGHT		PJ6
-	switchedPins = (STUDENT_FORWARD | STUDENT_REVERSE | STUDENT_LEFT | STUDENT_RIGHT) ^ ((PIN3_bm | PIN4_bm | PIN5_bm | PIN6_bm) & PORTJ.IN);
-
-	if((switchedPins & PIN3_bm) && !(TCD0.CTRLB & TC0_CCAEN_bm)) {	//STUDENT_FORWARD
-		//start debounce timer
-		TC_SetCompareA(&TCD0, TCD0.CNT + DEBOUNCE_PERIOD);
-		TC0_EnableCCChannels( &TCD0, TC0_CCAEN_bm);
-	}
-	if((switchedPins & PIN4_bm) && !(TCD0.CTRLB & TC0_CCBEN_bm)) {	//STUDENT_REVERSE
-		//start debounce timer
-		TC_SetCompareB(&TCD0, TCD0.CNT + DEBOUNCE_PERIOD);
-		TC0_EnableCCChannels( &TCD0, TC0_CCBEN_bm);
-	}
-	if((switchedPins & PIN5_bm) && !(TCD0.CTRLB & TC0_CCCEN_bm)) {	//STUDENT_LEFT
-		//start debounce timer
-		TC_SetCompareC(&TCD0, TCD0.CNT + DEBOUNCE_PERIOD);
-		TC0_EnableCCChannels( &TCD0, TC0_CCCEN_bm);
-	}
-	if((switchedPins & PIN6_bm) && !(TCD0.CTRLB & TC0_CCDEN_bm)) {	//STUDENT_RIGHT
-		//start debounce timer
-		TC_SetCompareD(&TCD0, TCD0.CNT + DEBOUNCE_PERIOD);
-		TC0_EnableCCChannels( &TCD0, TC0_CCDEN_bm);
-	}
-}
-
-ISR(PORTK_INT0_vect)
-{
-	uint8_t switchedPins = 0;
-
-	//PANEL_LA_UP		PK0
-	//ESTOP				PK2
-	//PANEL_LA_DOWN		PK3
-
-	switchedPins = (PANEL_LA_UP | ESTOP | PANEL_LA_DOWN) ^ ((PIN0_bm | PIN2_bm | PIN3_bm) & PORTK.IN);
-
-	if((switchedPins & PIN0_bm) && !(TCE1.CTRLB & TC1_CCAEN_bm)) {	//PANEL_LA_UP
-		//start debounce timer
-		TC_SetCompareA(&TCE1, TCE1.CNT + DEBOUNCE_PERIOD);
-		TC1_EnableCCChannels( &TCE1, TC1_CCAEN_bm);
-	}
-	if((switchedPins & PIN2_bm) && !(TCE1.CTRLB & TC1_CCBEN_bm)) {	//ESTOP
-		//start debounce timer
-		TC_SetCompareB(&TCE1, TCE1.CNT + DEBOUNCE_PERIOD);
-		TC1_EnableCCChannels( &TCE1, TC1_CCBEN_bm);
-	}
-	if((switchedPins & PIN3_bm) && !(TCF1.CTRLB & TC1_CCAEN_bm)) {	//PANEL_LA_DOWN
-		//start debounce timer
-		TC_SetCompareA(&TCF1, TCF1.CNT + DEBOUNCE_PERIOD);
-		TC1_EnableCCChannels( &TCF1, TC1_CCAEN_bm);
-	}
-}
-
-ISR(PORTK_INT1_vect)
-{
-	uint8_t switchedPins = 0;
-
-	//PANEL_BUMPER_OVERRIDE		PK1
-	//PROP_JOY_DETECT			PK7
-
-	switchedPins = (PANEL_BUMPER_OVERRIDE | PROP_JOY_DETECT) ^ ((PIN1_bm | PIN7_bm)  & PORTK.IN);
-
-	if((switchedPins & PIN1_bm) && !(TCD1.CTRLB & TC1_CCAEN_bm)) {	//PANEL_BUMPER_OVERRIDE
-		//start debounce timer
-		TC_SetCompareA(&TCD1, TCD1.CNT + DEBOUNCE_PERIOD);
-		TC1_EnableCCChannels( &TCD1, TC1_CCAEN_bm);
-	}
-	if((switchedPins & PIN7_bm) && !(TCD1.CTRLB & TC1_CCBEN_bm)) {	//PROP_JOY_DETECT
-		//start debounce timer
-		TC_SetCompareB(&TCD1, TCD1.CNT + DEBOUNCE_PERIOD);
-		TC1_EnableCCChannels( &TCD1, TC1_CCBEN_bm);
-	}
-}
-
-//after a debouncing period set the variable to the pin value
-ISR(TCC0_CCA_vect)	//BB_LEFT
-{
-	if((TCC0.CTRLB & TC0_CCAEN_bm) == 0) {
-		return;
-	}
-	TC0_DisableCCChannels( &TCC0, TC0_CCAEN_bm);
-	BB_LEFT	= PORTJ.IN & PIN0_bm;
-}
-
-ISR(TCC0_CCB_vect)	//BB_RIGHT
-{
-	if((TCC0.CTRLB & TC0_CCBEN_bm) == 0) {
-		return;
-	}
-	TC0_DisableCCChannels( &TCC0, TC0_CCBEN_bm);
-	BB_RIGHT	= PORTJ.IN & PIN1_bm;
-}
-
-ISR(TCC0_CCC_vect)	//BB_FIFTH
-{
-	if((TCC0.CTRLB & TC0_CCCEN_bm) == 0) {
-		return;
-	}
-	TC0_DisableCCChannels( &TCC0, TC0_CCCEN_bm);
-	BB_FIFTH	= PORTJ.IN & PIN2_bm;
-}
-
-ISR(TCC0_CCD_vect)	//STUDENT_FIFTH
-{
-	if((TCC0.CTRLB & TC0_CCDEN_bm) == 0) {
-		return;
-	}
-	TC0_DisableCCChannels( &TCC0, TC0_CCDEN_bm);
-	STUDENT_FIFTH	= PORTJ.IN & PIN7_bm;
-}
-
-ISR(TCC1_CCA_vect)	//BB_FORWARD
-{
-	if((TCC1.CTRLB & TC1_CCAEN_bm) == 0) {
-		return;
-	}
-	TC1_DisableCCChannels( &TCC1, TC1_CCAEN_bm);
-	BB_FORWARD	= PORTH.IN & PIN6_bm;
-}
-
-ISR(TCC1_CCB_vect)	//BB_REVERSE
-{
-	if((TCC1.CTRLB & TC1_CCBEN_bm) == 0) {
-		return;
-	}
-	TC1_DisableCCChannels( &TCC1, TC1_CCBEN_bm);
-	BB_REVERSE	= PORTH.IN & PIN7_bm;
-}
-
-ISR(TCD0_CCA_vect)	//STUDENT_FORWARD
-{
-	if((TCD0.CTRLB & TC0_CCAEN_bm) == 0) {
-		return;
-	}
-	TC0_DisableCCChannels( &TCD0, TC0_CCAEN_bm);
-	STUDENT_FORWARD	= PORTJ.IN & PIN3_bm;
-}
-
-ISR(TCD0_CCB_vect)	//STUDENT_REVERSE
-{
-	if((TCD0.CTRLB & TC0_CCBEN_bm) == 0) {
-		return;
-	}
-	TC0_DisableCCChannels( &TCD0, TC0_CCBEN_bm);
-	STUDENT_REVERSE	= PORTJ.IN & PIN4_bm;
-}
-
-ISR(TCD0_CCC_vect)	//STUDENT_LEFT
-{
-	if((TCD0.CTRLB & TC0_CCCEN_bm) == 0) {
-		return;
-	}
-	TC0_DisableCCChannels( &TCD0, TC0_CCCEN_bm);
-	STUDENT_LEFT	= PORTJ.IN & PIN5_bm;
-}
-
-ISR(TCD0_CCD_vect)	//STUDENT_RIGHT
-{
-	if((TCD0.CTRLB & TC0_CCDEN_bm) == 0) {
-		return;
-	}
-	TC0_DisableCCChannels( &TCD0, TC0_CCDEN_bm);
-	STUDENT_RIGHT	= PORTJ.IN & PIN6_bm;
-}
-
-ISR(TCD1_CCA_vect)	//PANEL_BUMPER_OVERRIDE
-{
-	if((TCD1.CTRLB & TC1_CCAEN_bm) == 0) {
-		return;
-	}
-	TC1_DisableCCChannels( &TCD1, TC1_CCAEN_bm);
-	PANEL_BUMPER_OVERRIDE	= PORTK.IN & PIN1_bm;
-
-	if(PANEL_BUMPER_OVERRIDE == 0) {	//platform down
-		PORTK.OUTCLR = PIN4_bm;	//turn on indicator LED
-	}
-	else {
-		PORTK.OUTSET = PIN4_bm;	//turn off indicator LED
-	}
-}
-
-ISR(TCD1_CCB_vect)	//PROP_JOY_DETECT
-{
-	if((TCD1.CTRLB & TC1_CCBEN_bm) == 0) {
-		return;
-	}
-	TC1_DisableCCChannels( &TCD1, TC1_CCBEN_bm);
-	PROP_JOY_DETECT	= PORTK.IN & PIN7_bm;
-	if(PROP_JOY_DETECT == 0) {	//platform down
-		PORTK.OUTCLR = PIN5_bm;	//turn on indicator LED
-	}
-	else {
-		PORTK.OUTSET = PIN5_bm;	//turn off indicator LED
-	}
-}
-
-ISR(TCE1_CCA_vect)	//PANEL_LA_UP
-{
-	if((TCE1.CTRLB & TC1_CCAEN_bm) == 0) {
-		return;
-	}
-	TC1_DisableCCChannels( &TCE1, TC1_CCAEN_bm);
-	PANEL_LA_UP	= PORTK.IN & PIN0_bm;
-}
-
-ISR(TCE1_CCB_vect)	//ESTOP
-{
-	uint8_t temp;
-	if((TCE1.CTRLB & TC1_CCBEN_bm) == 0) {
-		return;
-	}
-	TC1_DisableCCChannels( &TCE1, TC1_CCBEN_bm);
-	temp = PORTK.IN & PIN2_bm;
-	if(temp != ESTOP) {
-		ESTOP = temp;
-		PulsePGDTEstop();
-	}
-}
-
-ISR(TCF1_CCA_vect)	//PANEL_LA_DOWN
-{
-	if((TCF1.CTRLB & TC1_CCAEN_bm) == 0) {
-		return;
-	}
-	TC1_DisableCCChannels( &TCF1, TC1_CCAEN_bm);
-	PANEL_LA_DOWN	= PORTK.IN & PIN3_bm;
-}
-
 void PulsePGDTEstop(void)
 {
 	PORTK.OUTSET = PIN6_bm;
 	//start pulse timer
 	TC_SetCompareB(&TCF1, TCF1.CNT + PGDT_ESTOP_PULSE_PERIOD);
 	TC1_EnableCCChannels( &TCF1, TC1_CCBEN_bm);
-
-	ResetBumperThreshold();
 }
 
 ISR(TCF1_CCB_vect)  //Omni e-stop
@@ -837,4 +486,18 @@ ISR(TCF1_CCB_vect)  //Omni e-stop
 	}
 	TC1_DisableCCChannels( &TCF1, TC1_CCBEN_bm);
 	PORTK.OUTCLR = PIN6_bm;
+}
+
+ISR(ADCA_CH0_vect)
+{
+	AVR_ENTER_CRITICAL_REGION();
+	gWiredPropJoySpeed = ADC_ResultCh_GetWord(&ADCA.CH0);
+	AVR_LEAVE_CRITICAL_REGION();
+}
+
+ISR(ADCA_CH1_vect)
+{
+	AVR_ENTER_CRITICAL_REGION();
+	gWiredPropJoyDirection = ADC_ResultCh_GetWord(&ADCA.CH1);
+	AVR_LEAVE_CRITICAL_REGION();
 }

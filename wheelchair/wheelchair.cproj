@@ -76,9 +76,6 @@
     <Compile Include="atmel\wdt_driver.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\bumper.c">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="src\lcd_driver.c">
       <SubType>compile</SubType>
     </Compile>

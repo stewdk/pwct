@@ -11,6 +11,7 @@
 
 #include "util.h"
 
+void testPropJoy(void);
 void getStateStr(states state, char *str);
 void testNordicWireless(void);
 void testInputs(void);

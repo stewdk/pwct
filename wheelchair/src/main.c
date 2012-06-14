@@ -26,17 +26,42 @@
 #include "util.h"
 #include "nordic_driver.h"
 #include "linear_actuator.h"
-#include "bumper.h"
 #include "PWCT_io.h"
 #include "../atmel/wdt_driver.h"
 #include "motor_driver.h"
 #include "lcd_driver.h"
 //#include "test.h"
 
-#define ACTUATOR_THRESHOLD 10000
-
-double PLATFORM_COUNT;
 //static char GSTR[64];
+
+static void pwctIOLogic(void)
+{
+	static uint8_t estopDebounceFlg = 0;
+	static uint8_t EstopPulseSent = 0;
+	if(!EmergencyStopPressed()) { // Not pressed
+		estopDebounceFlg = 0;
+		EstopPulseSent = 0;
+	}
+	else if(!EstopPulseSent) { // Pressed
+		estopDebounceFlg++;
+		if(estopDebounceFlg >= 3) {
+			PulsePGDTEstop();
+			EstopPulseSent = 1;
+		}
+	}
+
+	//set bumper override led
+	if(getPANEL_BUMPER_OVERRIDE()) {
+		PORTK.OUTCLR = PIN4_bm;
+	} else {
+		PORTK.OUTSET = PIN4_bm;
+	}
+
+	//check if panel bumper override was toggled
+	if(!getPANEL_BUMPER_OVERRIDE()) {
+		//ResetBumperThreshold();
+	}
+}
 
 /*! \brief Main function
  *
@@ -65,8 +90,7 @@ int main( void )
 	dbgUSARTinit();
 
 	initLinearActuators();
-	PLATFORM_COUNT = 0;
-//	initBumpers();
+
 	initPWCTio();
 
 	nordic_Initialize(1);
@@ -76,6 +100,8 @@ int main( void )
 	WDT_EnableAndSetTimeout(WDT_PER_512CLK_gc);	//set watchdog timer for 0.5s period
 
 	printf("\nReset\n");
+
+	//testPropJoy();
 
 	//testNordicWireless();
 
@@ -88,25 +114,16 @@ int main( void )
 		WDT_Reset();
 //		dbgLEDtgl();
 
-//		BumperAlgorithm();
-
 		//check inputs for state changes
 		SampleInputs();
+		pwctIOLogic();
 		moveDir = GetMoveDirection();
 
 		actuatorSwitchState = ActuatorSwitchPressed();
 		limitSwitchPressedFlag = LimitSwitchPressed();
-		if (PLATFORM_COUNT >= ACTUATOR_THRESHOLD){
-			//limitSwitchPressedFlag = 1; //the platform is all the way up
-		}
-		if (PLATFORM_COUNT < ACTUATOR_THRESHOLD){
-			//limitSwitchPressedFlag = 0; //the platform is not all the way up, could be anywhere below top
-		}
-//		PrintBumperStates();
+
 //		PrintLACurrents();
-//		PrintRightCornerBumper();
-//		PrintLeftCornerBumper();
-//		PrintRightFrontBumper();
+
 		if(EmergencyStopPressed()) {
 			state = IDLE;
 		}
@@ -147,15 +164,9 @@ int main( void )
 				break;
 			case 1:	//actuator switch down, lower platform
 				LowerPlatform();
-				if (PLATFORM_COUNT > 0){
-					PLATFORM_COUNT -= 0.5;
-				}
 				break;
 			case 2: // actuator switch up, raise platform
 				RaisePlatform();
-				if (PLATFORM_COUNT < ACTUATOR_THRESHOLD){
-					PLATFORM_COUNT += 0.5;
-				}
 				break;
 			}
 			//turn on platform down LED
