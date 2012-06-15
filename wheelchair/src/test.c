@@ -14,6 +14,43 @@
 #include "linear_actuator.h"
 #include "motor_driver.h"
 
+void testJoystickDriveMotors(void)
+{
+	//range = 1150
+	//zero = 2720
+	int16_t speed;
+	int16_t dir;
+
+	while(1) {
+		WDT_Reset();
+		speed = getWiredPropJoySpeed();
+		dir = getWiredPropJoyDirection();
+		speed = (speed - 2715) / 4;
+		dir = (dir - 2725) / 4;
+		//printf("Speed: %d Dir: %d\n", speed, dir);
+		if (speed >= 0) {
+			if (speed > 127)
+				speed = 127;
+			sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MIXED_MODE, speed);
+		} else {
+			speed = -speed;
+			if (speed > 127)
+				speed = 127;
+			sendMotorCommand(MOTOR_CMD_DRIVE_BACKWARDS_MIXED_MODE, speed);
+		}
+		if (dir >= 0) {
+			if (dir > 127)
+				dir = 127;
+			sendMotorCommand(MOTOR_CMD_TURN_RIGHT_MIXED_MODE, dir);
+		} else {
+			dir = -dir;
+			if (dir > 127)
+				dir = 127;
+			sendMotorCommand(MOTOR_CMD_TURN_LEFT_MIXED_MODE, dir);
+		}
+	}
+}
+
 void testPropJoy(void)
 {
 	while(1) {

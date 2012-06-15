@@ -58,7 +58,8 @@ void initMotorDriver(void) {
 	sendMotorCommand(MOTOR_CMD_SERIAL_TIMEOUT, 5);
 
 	// Enable ramping 4.2s
-	sendMotorCommand(MOTOR_CMD_RAMPING, 14);
+	//sendMotorCommand(MOTOR_CMD_RAMPING, 14);
+	sendMotorCommand(MOTOR_CMD_RAMPING, 20);
 }
 
 void motorEStop(void)

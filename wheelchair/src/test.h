@@ -11,6 +11,7 @@
 
 #include "util.h"
 
+void testJoystickDriveMotors(void);
 void testPropJoy(void);
 void getStateStr(states state, char *str);
 void testNordicWireless(void);

@@ -101,6 +101,8 @@ int main( void )
 
 	printf("\nReset\n");
 
+	//testJoystickDriveMotors();
+
 	//testPropJoy();
 
 	//testNordicWireless();
