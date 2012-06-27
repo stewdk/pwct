@@ -30,13 +30,41 @@ static inline void lcdRSClr(void)
 	LCD_RS_PORT.OUTCLR = LCD_RS_PIN_bm;
 }
 
-static void lcdCommand(uint8_t command)
+static void lcdNibble(uint8_t data)
 {
-	LCD_DATA_PORT.OUT = command;
-	lcdRSClr();
+	if (data & 0x8) {
+		LCD_DB7_PORT.OUTSET = LCD_DB7_PIN_bm;
+	} else {
+		LCD_DB7_PORT.OUTCLR = LCD_DB7_PIN_bm;
+	}
+	if (data & 0x4) {
+		LCD_DB6_PORT.OUTSET = LCD_DB6_PIN_bm;
+	} else {
+		LCD_DB6_PORT.OUTCLR = LCD_DB6_PIN_bm;
+	}
+	if (data & 0x2) {
+		LCD_DB5_PORT.OUTSET = LCD_DB5_PIN_bm;
+	} else {
+		LCD_DB5_PORT.OUTCLR = LCD_DB5_PIN_bm;
+	}
+	if (data & 0x1) {
+		LCD_DB4_PORT.OUTSET = LCD_DB4_PIN_bm;
+	} else {
+		LCD_DB4_PORT.OUTCLR = LCD_DB4_PIN_bm;
+	}
+
 	lcdESet();
 	_delay_us(1);
 	lcdEClr();
+}
+
+static void lcdCommand(uint8_t command)
+{
+	lcdRSClr();
+	lcdNibble(command >> 4);
+	_delay_us(1);
+	lcdNibble(command & 0x0F);
+
 	if ((command == LCD_CMD_CLEAR_DISPLAY) || ((command & 0xFE) == LCD_CMD_RETURN_HOME)) {
 		_delay_ms(1.52);
 	} else {
@@ -46,11 +74,10 @@ static void lcdCommand(uint8_t command)
 
 static void lcdWrite(uint8_t data)
 {
-	LCD_DATA_PORT.OUT = data;
 	lcdRSSet();
-	lcdESet();
+	lcdNibble(data >> 4);
 	_delay_us(1);
-	lcdEClr();
+	lcdNibble(data & 0x0F);
 	_delay_us(38);
 }
 
@@ -79,8 +106,14 @@ void lcdText(const char *line1, const char *line2)
 
 void initLCDDriver(void)
 {
-	LCD_DATA_PORT.DIRSET = 0xFF;
-	LCD_DATA_PORT.OUTCLR = 0xFF;
+	LCD_DB7_PORT.DIRSET = LCD_DB7_PIN_bm;
+	LCD_DB7_PORT.OUTCLR = LCD_DB7_PIN_bm;
+	LCD_DB6_PORT.DIRSET = LCD_DB6_PIN_bm;
+	LCD_DB6_PORT.OUTCLR = LCD_DB6_PIN_bm;
+	LCD_DB5_PORT.DIRSET = LCD_DB5_PIN_bm;
+	LCD_DB5_PORT.OUTCLR = LCD_DB5_PIN_bm;
+	LCD_DB4_PORT.DIRSET = LCD_DB4_PIN_bm;
+	LCD_DB4_PORT.OUTCLR = LCD_DB4_PIN_bm;
 	LCD_RS_PORT.DIRSET = LCD_RS_PIN_bm;
 	LCD_RS_PORT.OUTCLR = LCD_RS_PIN_bm;
 	LCD_RW_PORT.DIRSET = LCD_RW_PIN_bm;
@@ -88,18 +121,24 @@ void initLCDDriver(void)
 	LCD_E_PORT.DIRSET = LCD_E_PIN_bm;
 	LCD_E_PORT.OUTCLR = LCD_E_PIN_bm;
 
-	lcdEClr();
 	_delay_ms(40); //Wait >40 msec after power is applied
-	lcdCommand(LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_DL_bm | LCD_CMD_FUNCTION_N_bm); //Wake up #1
+
+	// Start out as 8-bit bus
+
+	lcdRSClr();
+	lcdNibble((LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_DL_bm) >> 4); //Wake up #1
 	_delay_ms(5);
-	lcdCommand(LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_DL_bm | LCD_CMD_FUNCTION_N_bm); //Wake up #2
+	lcdNibble((LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_DL_bm) >> 4); //Wake up #2
 	_delay_us(160);
-	lcdCommand(LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_DL_bm | LCD_CMD_FUNCTION_N_bm); //Wake up #3
+	lcdNibble((LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_DL_bm) >> 4); //Wake up #3
 	_delay_us(160);
-	lcdCommand(LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_DL_bm | LCD_CMD_FUNCTION_N_bm); // 8-bit bus, 2-line LCD
-	lcdCommand(LCD_CMD_DISPLAY_ON_OFF | LCD_CMD_DISPLAY_ON_OFF_D_bm); // | LCD_CMD_DISPLAY_ON_OFF_C_bm); //Display ON
+	lcdNibble((LCD_CMD_FUNCTION_SET) >> 4); // Tell the LCD to switch to 4-bit bus (this command is still 8-bit)
+	_delay_us(38);
+
+	//Now it's a 4-bit bus
+
+	lcdCommand(LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_N_bm); // 2-line LCD, 5x8
+	lcdCommand(LCD_CMD_DISPLAY_ON_OFF | LCD_CMD_DISPLAY_ON_OFF_D_bm | LCD_CMD_DISPLAY_ON_OFF_C_bm); //Display ON
 	lcdCommand(LCD_CMD_ENTRY_MODE_SET | LCD_CMD_ENTRY_MODE_I_D_bm); //Cursor moves right
 	lcdCommand(LCD_CMD_CLEAR_DISPLAY); // Last thing to do before writing text
-
-	lcdText("PWCT", "Ver. 2012-06-27");
 }

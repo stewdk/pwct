@@ -10,8 +10,21 @@
 
 // BEGIN HARDWARE SPECIFIC
 
-// DB0:7 = PC0:7
-#define LCD_DATA_PORT PORTC
+// DB7 = PC7
+#define LCD_DB7_PORT PORTC
+#define LCD_DB7_PIN_bm PIN7_bm
+
+// DB6 = PC6
+#define LCD_DB6_PORT PORTC
+#define LCD_DB6_PIN_bm PIN6_bm
+
+// DB5 = PC5
+#define LCD_DB5_PORT PORTC
+#define LCD_DB5_PIN_bm PIN5_bm
+
+// DB4 = PC4
+#define LCD_DB4_PORT PORTC
+#define LCD_DB4_PIN_bm PIN4_bm
 
 // Operation Enable, E = PD1
 #define LCD_E_PORT PORTD
@@ -95,5 +108,6 @@
 #define LCD_LINE_2_START_ADDR 0x40
 
 void initLCDDriver(void);
+void lcdText(const char *line1, const char *line2);
 
 #endif /* LCD_DRIVER_H_ */
