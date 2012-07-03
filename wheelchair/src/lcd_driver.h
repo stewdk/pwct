@@ -108,6 +108,6 @@
 #define LCD_LINE_2_START_ADDR 0x40
 
 void initLCDDriver(void);
-void lcdText(const char *line1, const char *line2);
+void lcdText(const char *line1, const char *line2, uint8_t blocking);
 
 #endif /* LCD_DRIVER_H_ */

@@ -96,7 +96,6 @@ int main( void )
 	nordic_Initialize(1);
 
 	initLCDDriver();
-	lcdText("PWCT", "Ver. 2012-06-27");
 
 	WDT_EnableAndSetTimeout(WDT_PER_512CLK_gc);	//set watchdog timer for 0.5s period
 
@@ -116,6 +115,7 @@ int main( void )
 	while(1) {
 		WDT_Reset();
 //		dbgLEDtgl();
+		lcdText("PWCT  Build Date", "     " __DATE__, 0);
 
 		//check inputs for state changes
 		SampleInputs();
