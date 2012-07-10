@@ -4,18 +4,14 @@
  *  Created on: Apr 12, 2011
  *      Author: grant
  */
+
 #include "nordic_hardware_specific.h"
+#include "nordic_driver.h"
 
 #define BITBANG_SPI 1
 
 #define sbi(var, mask)   ((var) |= (uint8_t)(1 << mask))
 #define cbi(var, mask)   ((var) &= (uint8_t)~(1 << mask))
-
-#define BOARD_WHEELCHAIR	1
-#define BOARD_REMOTE		2
-
-//#define BOARD BOARD_WHEELCHAIR
-#define BOARD BOARD_REMOTE
 
 //pull CS low
 inline void chipSelect(void)
@@ -24,7 +20,7 @@ inline void chipSelect(void)
 	sbi(DDRB, PB5);
 }
 
-//release SS
+//release CS
 inline void chipRelease(void)
 {
 	sbi(PORTB, PB5);

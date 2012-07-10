@@ -48,9 +48,9 @@ void initHardware(void)
 	JOY_STATE = 0;
 
 	//set buttons pins as inputs
-	DDRA &= ~(_BV(PA0) | _BV(PA1) | _BV(PA2));
+	DDRA &= ~(_BV(PA0) | _BV(PA1) | _BV(PA2) | _BV(PA3) | _BV(PA4) | _BV(PA5));
 	//enable pullups on button lines
-	PORTA |= _BV(PA0) | _BV(PA1) | _BV(PA2);
+	PORTA |= _BV(PA0) | _BV(PA1) | _BV(PA2) | _BV(PA3) | _BV(PA4) | _BV(PA5);
 
 	//enable button interrupts to wake remote
 	//PA0	Button	PCINT0

@@ -12,13 +12,11 @@
 #include <avr/interrupt.h>
 #include "util/delay.h"
 
-#define dbgLEDtgl()	tglLED()
+//function to disable interrupts
+#define AVR_ENTER_CRITICAL_REGION()	cli()
 
 //function to enable interrupts
-#define SEI()	sei()
-
-//function to disable interrupts
-#define CLI()	cli()
+#define AVR_LEAVE_CRITICAL_REGION()	sei()
 
 void chipSelect(void);
 void chipRelease(void);
@@ -27,9 +25,5 @@ void activeMode(void);
 void setMode(uint8_t mode);
 void initalizeHardwareForNordic(void);
 uint8_t SPI_TransceiveByte(uint8_t data);
-
-//user doesn't need to define this function, but does need to call it from their own interrupt
-//triggered by the falling edge of the IRQ pin from the nordic chip
-uint8_t nordic_IRQ(void);
 
 #endif /* NORDIC_HARDWARE_SPECIFIC_H_ */

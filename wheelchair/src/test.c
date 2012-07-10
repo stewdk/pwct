@@ -13,6 +13,7 @@
 #include "PWCT_io.h"
 #include "linear_actuator.h"
 #include "motor_driver.h"
+#include "lcd_driver.h"
 
 void testJoystickDriveMotors(void)
 {
@@ -92,6 +93,7 @@ static void byte_to_binary(char * b, int x)
 // TEST WIRELESS COMMUNICATION
 void testNordicWireless(void)
 {
+	lcdText("Wireless test   ", "     " __DATE__, 0);
 	uint8_t i;
 	NORDIC_PACKET packet;
 	while(1) {

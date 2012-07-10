@@ -45,7 +45,6 @@ static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, 
 	uint8_t i;
 	uint8_t rx;
 	uint8_t data;
-	//uint8_t previousMode = 0;
 	uint8_t statusFake;
 	int8_t err = 0;
 
@@ -54,7 +53,7 @@ static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, 
 		status = &statusFake;
 	}
 
-	//previousMode = standbyMode();
+	standbyMode();
 
 	//	_delay_us(4);
 	chipSelect();

@@ -10,7 +10,7 @@
 
 #include <avr/io.h>
 
-/************ NORDIC COMMAND WORDS ************************/
+// NORDIC COMMAND WORDS
 //	R_REGISTER 0b000XXXXX where XXXXX = 5 bit register map address
 #define R_REGISTER_nCmd				0x00
 //	W_REGISTER 0b001XXXXX where XXXXX = 5 bit register map address
@@ -26,7 +26,7 @@
 #define W_TX_PAYLOAD_NOACK_nCmd		0xB0
 #define NOP_nCmd					0xFF
 
-/************ NORDIC REGISTERS ************************/
+// NORDIC REGISTERS (5-bit addresses, 8-bit values)
 #define CONFIG_nReg			0x00
 #define EN_AA_nReg			0x01
 #define EN_RXADDR_nReg		0x02
@@ -85,11 +85,15 @@ typedef struct {
 }NORDIC_PACKET;
 
 int8_t nordic_Initialize(uint8_t receiver);
+uint8_t nordic_GetStatus(void);
 uint8_t nordic_GetNewPacket(NORDIC_PACKET* packet);
 void nordic_GetLastPacket(NORDIC_PACKET* packet);
 void nordic_TransmitData(NORDIC_PACKET * packet);
-uint8_t nordic_GetStatus(void);
 void nordic_PowerDown(void);
 void nordic_PowerUp(void);
+
+//nordic_IRQ() is called from an ISR in nordic_hardware_specific.c
+//triggered by the falling edge of the IRQ pin from the nordic chip
+uint8_t nordic_IRQ(void);
 
 #endif /* NORDIC_DRIVER_H_ */
