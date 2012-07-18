@@ -17,6 +17,14 @@ static volatile int8_t TX_DATA_SENT_FLAG = 0;
 static volatile int8_t MAX_RETRANSMITS_READY_FLAG = 0;
 static volatile NORDIC_PACKET LAST_PACKET;
 
+static uint8_t INSTRUCTOR_FORWARD;
+static uint8_t INSTRUCTOR_REVERSE;
+static uint8_t INSTRUCTOR_LEFT;
+static uint8_t INSTRUCTOR_RIGHT;
+static uint8_t INSTRUCTOR_LA_UP;
+static uint8_t INSTRUCTOR_LA_DOWN;
+static uint8_t INSTRUCTOR_ESTOP;
+
 static void nordic_CopyPacket(NORDIC_PACKET* dest, volatile NORDIC_PACKET* src)
 {
 	AVR_ENTER_CRITICAL_REGION();
@@ -85,30 +93,28 @@ static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, 
 }
 
 //Write a register that contains a single byte of data
-static int8_t nordic_WriteRegister(uint8_t reg, uint8_t data, uint8_t *status)
+static inline int8_t nordic_WriteRegister(uint8_t reg, uint8_t data, uint8_t *status)
 {
 	return nordic_SendCommand(W_REGISTER_nCmd | reg, &data, NULL, 1, status);
 }
 
 //Writes a register with N bytes of data
-static int8_t nordic_WriteRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status)
+static inline int8_t nordic_WriteRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status)
 {
 	return nordic_SendCommand(W_REGISTER_nCmd | reg, data, NULL, size, status);
 }
 
 //Read a register that contains a single byte of data
-static int8_t nordic_ReadRegister(uint8_t reg, uint8_t *data, uint8_t *status)
+static inline int8_t nordic_ReadRegister(uint8_t reg, uint8_t *data, uint8_t *status)
 {
 	return nordic_SendCommand(R_REGISTER_nCmd | reg, NULL, data, 1, status);
 }
 
 //Read a register with N bytes of data
-/*
-static int8_t nordic_ReadRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status)
+static inline int8_t nordic_ReadRegisters(uint8_t reg, uint8_t *data, uint8_t size, uint8_t *status)
 {
 	return nordic_SendCommand(R_REGISTER_nCmd | reg, NULL, data, size, status);
 }
-*/
 
 static void setDirTx(void)
 {
@@ -129,11 +135,11 @@ static void setDirRx(void)
 
 int8_t nordic_Initialize(uint8_t receiver)
 {
+	//todo: EN_RXADDR
+	//After wednesday: data pipe 0 and 1 with unique 5-byte address
+	//Before wednesday: get prop. data from wireless
 	uint8_t data;
 	uint8_t datas[10];
-	//uint8_t i;
-	//uint8_t previousMode;
-	//uint8_t status;
 	int8_t err = 0;
 
 	initalizeHardwareForNordic();
@@ -182,13 +188,12 @@ int8_t nordic_Initialize(uint8_t receiver)
 	datas[0] = datas[1] = datas[2] = datas[3] = 0xE7;
 	err = nordic_WriteRegisters(TX_ADDR_nReg, datas, 4, NULL);
 
-	//clear fifos
-//	nordic_SendCommand(FLUSH_RX_nCmd, NULL, NULL, 0, NULL);
-//	nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
+	//clear fifos (necessary for wdt/soft reset)
+	nordic_SendCommand(FLUSH_RX_nCmd, NULL, NULL, 0, NULL);
+	nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
 
-	//clear interrupts
-//	nordic_WriteRegister(STATUS_nReg, 0x70, NULL);
-
+	//clear interrupts (necessary for wdt/soft reset)
+	nordic_WriteRegister(STATUS_nReg, 0x70, NULL);
 
 	//RX on IRQ, PWR_UP bit set, CRC enabled, RX mode
 	if (receiver) {
@@ -205,25 +210,63 @@ int8_t nordic_Initialize(uint8_t receiver)
 		activeMode();	//start receiving
 	}
 
+	//set default values
+	INSTRUCTOR_FORWARD = 0;
+	INSTRUCTOR_REVERSE = 0;
+	INSTRUCTOR_LEFT = 0;
+	INSTRUCTOR_RIGHT = 0;
+	INSTRUCTOR_LA_UP = 0;
+	INSTRUCTOR_LA_DOWN = 0;
+	INSTRUCTOR_ESTOP = 0;
 
-	//Check the register values
-/*
-	previousMode = standbyMode();
-	for(i = 0x00; i <= 0x09; i++) {
-		nordic_ReadRegister(i, &data, NULL);
-		printf("Reg 0x%02X   0x%02X\n\r", i, data);
-	}
-	nordic_ReadRegisters(RX_ADDR_P0_nReg, datas, 5, NULL);
-	printf("Reg 0x%02X   0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X\n\r", RX_ADDR_P0_nReg, datas[0], datas[1], datas[2], datas[3], datas[4]);
-	nordic_ReadRegisters(TX_ADDR_nReg, datas, 5, NULL);
-	printf("Reg 0x%02X   0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X\n\r", TX_ADDR_nReg, datas[0], datas[1], datas[2], datas[3], datas[4]);
-	for(i = 0x11; i <= 0x17; i++) {
-		nordic_ReadRegister(i, &data, NULL);
-		printf("Reg 0x%02X   0x%02X\n\r", i, data);
-	}
-	setMode(previousMode);
-*/
 	return err;
+}
+
+uint8_t getInstructorEStop()
+{
+	return INSTRUCTOR_ESTOP;
+}
+uint8_t getInstructorLAUp()
+{
+	return INSTRUCTOR_LA_UP;
+}
+uint8_t getInstructorLADown()
+{
+	return INSTRUCTOR_LA_DOWN;
+}
+uint8_t getInstructorForward()
+{
+	return INSTRUCTOR_FORWARD;
+}
+uint8_t getInstructorReverse()
+{
+	return INSTRUCTOR_REVERSE;
+}
+uint8_t getInstructorLeft()
+{
+	return INSTRUCTOR_LEFT;
+}
+uint8_t getInstructorRight()
+{
+	return INSTRUCTOR_RIGHT;
+}
+
+uint8_t getWirelessPropJoySpeed(void)
+{
+	uint8_t speed;
+	AVR_ENTER_CRITICAL_REGION();
+	speed = LAST_PACKET.data.array[2];
+	AVR_LEAVE_CRITICAL_REGION();
+	return speed;
+}
+
+uint8_t getWirelessPropJoyDirection(void)
+{
+	uint8_t dir;
+	AVR_ENTER_CRITICAL_REGION();
+	dir = LAST_PACKET.data.array[1];
+	AVR_LEAVE_CRITICAL_REGION();
+	return dir;
 }
 
 uint8_t nordic_GetStatus(void)
@@ -270,17 +313,23 @@ void ClearLastPacket(void)
 void SetInstructorRemote(void)
 {
 	NORDIC_PACKET packet;
+	uint8_t newEStopState;
 
 	//parse the packet, call appropriate setter functions
 	nordic_CopyPacket(&packet, &LAST_PACKET);
 
-	setInstructorEStop(		(packet.data.array[0]&0b00000001)>>0 );
-	setInstructorLAUp(		(packet.data.array[0]&0b00000010)>>1 );
-	setInstructorLADown(	(packet.data.array[0]&0b00000100)>>2 );
-	setInstructorForward(	(packet.data.array[0]&0b00001000)>>3 );
-	setInstructorReverse(	(packet.data.array[0]&0b00010000)>>4 );
-	setInstructorLeft(		(packet.data.array[0]&0b00100000)>>5 );
-	setInstructorRight(		(packet.data.array[0]&0b01000000)>>6 );
+	//make sure to only send one e-stop pulse
+	newEStopState = (packet.data.array[0] & 0b00000001) >> 0;
+	if ((newEStopState == 0) && (INSTRUCTOR_ESTOP != newEStopState)) {
+		PulsePGDTEstop();
+	}
+	INSTRUCTOR_ESTOP = newEStopState;
+	INSTRUCTOR_LA_UP = (	(packet.data.array[0] & 0b00000010) >> 1 );
+	INSTRUCTOR_LA_DOWN = (	(packet.data.array[0] & 0b00000100) >> 2 );
+	INSTRUCTOR_FORWARD = (	(packet.data.array[0] & 0b00001000) >> 3 );
+	INSTRUCTOR_REVERSE = (	(packet.data.array[0] & 0b00010000) >> 4 );
+	INSTRUCTOR_LEFT = (		(packet.data.array[0] & 0b00100000) >> 5 );
+	INSTRUCTOR_RIGHT = (	(packet.data.array[0] & 0b01000000) >> 6 );
 }
 
 //This sends out the data in txdata, leaves chip in standby tx mode
@@ -352,6 +401,9 @@ uint8_t nordic_IRQ(void)
 		}
 		//clear fifo
 		nordic_SendCommand(FLUSH_RX_nCmd, NULL, NULL, 0, NULL);
+
+		//update remote variables
+		SetInstructorRemote();
 	}
 	if(status & 0x20) { // Data Sent TX FIFO
 		TX_DATA_SENT_FLAG = 1;

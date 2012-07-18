@@ -36,13 +36,6 @@
  *	Limit Switch 2					PA4			Input		A/D
  *	Limit Switch 3					PA5			Input		A/D
  *	Limit Switch 4					PA6			Input		A/D
- *	Instructor Forward				remote		Input		Clean
- *	Instructor Reverse				remote		Input		Clean
- *	Instructor Left					remote		Input		Clean
- *	Instructor Right				remote		Input		Clean
- *	Instructor LA Up				remote		Input		Clean
- *	Instructor LA Down				remote		Input		Clean
- *	Instructor Disable Student Joy	remote		Input		Clean
  *	Student Forward					PJ3			Input		Debounce
  *	Student Reverse					PJ4			Input		Debounce
  *	Student Left					PJ5			Input		Debounce
@@ -74,13 +67,6 @@
  */
 
 //these input flags are all active low
-static uint8_t INSTRUCTOR_FORWARD;
-static uint8_t INSTRUCTOR_REVERSE;
-static uint8_t INSTRUCTOR_LEFT;
-static uint8_t INSTRUCTOR_RIGHT;
-static uint8_t INSTRUCTOR_LA_UP;
-static uint8_t INSTRUCTOR_LA_DOWN;
-static uint8_t INSTRUCTOR_ESTOP;
 static uint8_t BB_FORWARD;
 static uint8_t BB_REVERSE;
 static uint8_t BB_LEFT;
@@ -91,7 +77,7 @@ static uint8_t STUDENT_REVERSE;
 static uint8_t STUDENT_LEFT;
 static uint8_t STUDENT_RIGHT;
 static uint8_t STUDENT_FIFTH;
-static uint8_t ESTOP;
+static uint8_t PANEL_ESTOP;
 static uint8_t PANEL_LA_UP;
 static uint8_t PANEL_LA_DOWN;
 static uint8_t PANEL_BUMPER_OVERRIDE;
@@ -174,64 +160,11 @@ void initPWCTio(void)
 	//get default values
 	SampleInputs();
 
-	//set default values
-	INSTRUCTOR_FORWARD = 0;
-	INSTRUCTOR_REVERSE = 0;
-	INSTRUCTOR_LEFT = 0;
-	INSTRUCTOR_RIGHT = 0;
-	INSTRUCTOR_LA_UP = 0;
-	INSTRUCTOR_LA_DOWN = 0;
-	INSTRUCTOR_ESTOP = 0;
-
 	PMIC_EnableMediumLevel();
 }
 
-/*
-void GetInputStates(uint8_t * states)
-{
-	//	printf("|      Remote          |                Panel               |Limit|             Bumpers              |\r\n");
-	//	printf("| Joystck | LA  | Estp | Buddy Btn | Joystick  | Estp |LA  | OvrRd|     | 1    2    3    4    5    6    7  |\r\n");
-	//	printf("| U D L R | U D |      | U D L R S | U D L R S |      |U D |      |     |                                  |\r\n");
-
-	*states++ = INSTRUCTOR_FORWARD;
-	*states++ = INSTRUCTOR_REVERSE;
-	*states++ = INSTRUCTOR_LEFT;
-	*states++ = INSTRUCTOR_RIGHT;
-	*states++ = INSTRUCTOR_LA_UP;
-	*states++ = INSTRUCTOR_LA_DOWN;
-	*states++ = INSTRUCTOR_ESTOP;
-	*states++ = BB_FORWARD;
-	*states++ = BB_REVERSE;
-	*states++ = BB_LEFT;
-	*states++ = BB_RIGHT;
-	*states++ = BB_FIFTH;
-	*states++ = STUDENT_FORWARD;
-	*states++ = STUDENT_REVERSE;
-	*states++ = STUDENT_LEFT;
-	*states++ = STUDENT_RIGHT;
-	*states++ = STUDENT_FIFTH;
-	*states++ = ESTOP;
-	*states++ = PANEL_LA_UP;
-	*states++ = PANEL_LA_DOWN;
-	*states++ = PANEL_BUMPER_OVERRIDE;
-	*states++ = LIMIT_SWITCH;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-	*states++ = 0;
-
-}
-*/
-
 void SampleInputs(void)
 {
-	//uint8_t panelBumperOverrideOld;
-
-	//panelBumperOverrideOld = PANEL_BUMPER_OVERRIDE;
-
 	BB_FORWARD				= PORTH.IN & PIN6_bm;
 	BB_REVERSE				= PORTH.IN & PIN7_bm;
 	BB_LEFT					= PORTJ.IN & PIN0_bm;
@@ -242,18 +175,16 @@ void SampleInputs(void)
 	STUDENT_LEFT			= PORTJ.IN & PIN5_bm;
 	STUDENT_RIGHT			= PORTJ.IN & PIN6_bm;
 	STUDENT_FIFTH			= PORTJ.IN & PIN7_bm;
-	ESTOP					= PORTK.IN & PIN2_bm;
+	PANEL_ESTOP				= PORTK.IN & PIN2_bm;
 	PANEL_LA_UP				= PORTK.IN & PIN0_bm;
 	PANEL_LA_DOWN			= PORTK.IN & PIN3_bm;
 	PANEL_BUMPER_OVERRIDE	= PORTK.IN & PIN1_bm;
 	PROP_JOY_DETECT			= PORTK.IN & PIN7_bm;
 	INVERT_SWITCH			= PORTR.IN & PIN1_bm;
 	LIMIT_SWITCH			= 0;
-
-	//printf("\rSTUDENT_FORWARD = %d  BB_FORWARD = %d  STUDENT_REVERSE = %d  BB_REVERSE = %d", STUDENT_FORWARD, BB_FORWARD, STUDENT_REVERSE, BB_REVERSE);
 }
 
-void StopMove(void)
+void OmniStopMove(void)
 {
 	PORTH.OUTCLR = PIN0_bm | PIN1_bm | PIN3_bm | PIN4_bm | PIN5_bm;
 }
@@ -264,7 +195,7 @@ void StopMove(void)
 //V = Reverse
 //L = Left
 //R = Right
-void Move(uint8_t moveDir)
+void OmniMove(uint8_t moveDir)
 {
 	/*	Out Forward		PH1
 	 *	Out Reverse		PH0
@@ -326,17 +257,17 @@ uint8_t GetMoveDirection(void)
 	}
 
 	//Instructor forward and reverse
-	if(INSTRUCTOR_FORWARD && !INSTRUCTOR_REVERSE) {	//if instructor forward selected and not instructor reverse selected
+	if(getInstructorForward() && !getInstructorReverse()) {	//if instructor forward selected and not instructor reverse selected
 		moveDir |= 0x08;
 	}
-	else if(INSTRUCTOR_REVERSE && !INSTRUCTOR_FORWARD) {	//if instructor reverse selected and not instructor forward selected
+	else if(getInstructorReverse() && !getInstructorForward()) {	//if instructor reverse selected and not instructor forward selected
 		moveDir |= 0x04;
 	}
 	//Instructor left and right
-	if(INSTRUCTOR_LEFT && !INSTRUCTOR_RIGHT) {	//if instructor forward selected and not instructor reverse selected
+	if(getInstructorLeft() && !getInstructorRight()) {	//if instructor forward selected and not instructor reverse selected
 		moveDir |= 0x02;
 	}
-	else if(INSTRUCTOR_RIGHT && !INSTRUCTOR_LEFT) {	//if instructor reverse selected and not instructor forward selected
+	else if(getInstructorRight() && !getInstructorLeft()) {	//if instructor reverse selected and not instructor forward selected
 		moveDir |= 0x01;
 	}
 
@@ -402,39 +333,6 @@ uint16_t getWiredPropJoyDirection(void)
 	return returnValue;
 }
 
-void setInstructorEStop(uint8_t state)
-{
-	//make sure to only send one pulse
-	if((INSTRUCTOR_ESTOP != state) && (state == 0)) {
-		PulsePGDTEstop();
-	}
-	INSTRUCTOR_ESTOP = state;
-}
-void setInstructorLAUp(uint8_t state)
-{
-	INSTRUCTOR_LA_UP = state;
-}
-void setInstructorLADown(uint8_t state)
-{
-	INSTRUCTOR_LA_DOWN = state;
-}
-void setInstructorForward(uint8_t state)
-{
-	INSTRUCTOR_FORWARD = state;
-}
-void setInstructorReverse(uint8_t state)
-{
-	INSTRUCTOR_REVERSE = state;
-}
-void setInstructorLeft(uint8_t state)
-{
-	INSTRUCTOR_LEFT = state;
-}
-void setInstructorRight(uint8_t state)
-{
-	INSTRUCTOR_RIGHT = state;
-}
-
 bool LimitSwitchPressed(void)
 {
 	return !LIMIT_SWITCH;
@@ -466,9 +364,9 @@ uint8_t ActuatorSwitchPressed(void)
 	}
 }
 
-bool EmergencyStopPressed(void)
+bool PanelEStopPressed(void)
 {
-	return !ESTOP;
+	return !PANEL_ESTOP;
 }
 
 void PulsePGDTEstop(void)

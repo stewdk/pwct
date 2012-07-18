@@ -5,9 +5,9 @@
  *      Author: grant
  */
 
-#include "remote_hardware.h"
 #include <avr/io.h>
-#include "avr/interrupt.h"
+#include <avr/interrupt.h>
+#include "remote_hardware.h"
 
 #define sbi(var, mask)   ((var) |= (uint8_t)(1 << mask))
 #define cbi(var, mask)   ((var) &= (uint8_t)~(1 << mask))
@@ -74,14 +74,20 @@ void initHardware(void)
 	TIMSK |= _BV(OCIE0A); //compare A interrupt enabled
 
 //INIT ADC
-	// ADMUX = REFS1 REFS0 ADLAR MUX4:0
-	ADMUX = 0b00100101;  //Select Vcc voltage reference, no left adjust, ADC5 (PA6, pin 14)
+	// ADMUX = REFS1:0 ADLAR MUX4:0
+	// Select Vcc voltage reference, left adjust result
+#define ADMUX_ADC5_bm (_BV(ADLAR) | 0x05) //ADC5 = PA6 = x-axis = horizontal axis = right/left = joystick direction = blue wire
+#define ADMUX_ADC6_bm (_BV(ADLAR) | 0x06) //ADC6 = PA7 = y-axis = vertical axis = fwd/rev = joystick speed = yellow wire
+	ADMUX = ADMUX_ADC5_bm;
 
 	// ADCSRA = ADEN ADSC ADATE ADIF ADIE ADPS2:0
-	ADCSRA = 0b10001100; //Enable ADC, not free running, interrupt enabled, clock divider  16 (62 KHz@1MHz)
-	DIDR0 = _BV(ADC5D | ADC6D);	//disable digital inputs on channels used for analog
+	ADCSRA = _BV(ADEN) | _BV(ADIE) | _BV(ADPS2); //Enable ADC, interrupt enabled, clock divider  16 (62 KHz@1MHz)
 
-	ADCSRA |= _BV(ADSC);//Start conversion
+	// ADCSRB = BIN GSEL - REFS2 MUX5 ADTS2:0
+
+	DIDR0 = _BV(ADC5D) | _BV(ADC6D);	//disable digital inputs on channels used for analog
+
+	ADCSRA |= _BV(ADSC); //Start conversion
 }
 
 
@@ -118,7 +124,6 @@ uint8_t GetADC6(void)
 
 uint8_t GetButton(void)
 {
-//	return BUTTON_DISABLE;
 	return BUTTON_DISABLE | BUTTON_UP | BUTTON_DOWN;
 }
 
@@ -154,9 +159,14 @@ uint8_t noButtonsPressed(void)
 */
 ISR(ADC_vect)
 {
-	if (ADMUX == 0b00100101)
+	// Todo: this is where we need to fix the up/down, left/right problem (I think)
+	if (ADMUX == ADMUX_ADC5_bm)
 	{
+		if (valueADC5 != ADCH) {
+			BUTTON_CHANGED_FLAG = 1;
+		}
 		valueADC5 = ADCH;
+
 		if(valueADC5 > 170 && (JOY_STATE & 0b01100000) != 0b00100000) {	//left
 			JOY_STATE = (JOY_STATE & 0b10011111) | 0b00100000;
 			BUTTON_CHANGED_FLAG = 1;
@@ -169,11 +179,15 @@ ISR(ADC_vect)
 			JOY_STATE = (JOY_STATE & 0b10011111) | 0b00000000;
 			BUTTON_CHANGED_FLAG = 1;
 		}
-		ADMUX = 0b00100110;  //Select Vcc voltage reference, no left adjust, ADC6 (PA7, pin 13)
+		ADMUX = ADMUX_ADC6_bm;
 	}
 	else
 	{
+		if (valueADC6 != ADCH) {
+			BUTTON_CHANGED_FLAG = 1;
+		}
 		valueADC6 = ADCH;
+
 		if(valueADC6 > 170 && (JOY_STATE & 0b00011000) != 0b00010000) {	//down
 			JOY_STATE = (JOY_STATE & 0b11100111) | 0b00010000;
 			BUTTON_CHANGED_FLAG = 1;
@@ -186,7 +200,7 @@ ISR(ADC_vect)
 			JOY_STATE = (JOY_STATE & 0b11100111) | 0b00000000;
 			BUTTON_CHANGED_FLAG = 1;
 		}
-		ADMUX = 0b00100101;  //Select Vcc voltage reference, no left adjust, ADC5 (PA6, pin 14)
+		ADMUX = ADMUX_ADC5_bm;
 	}
 	ADCSRA |= _BV(ADSC);//Start conversion
 }

@@ -38,7 +38,7 @@ static void pwctIOLogic(void)
 {
 	static uint8_t estopDebounceFlg = 0;
 	static uint8_t EstopPulseSent = 0;
-	if(!EmergencyStopPressed()) { // Not pressed
+	if(!PanelEStopPressed()) { // Not pressed
 		estopDebounceFlg = 0;
 		EstopPulseSent = 0;
 	}
@@ -60,6 +60,50 @@ static void pwctIOLogic(void)
 	//check if panel bumper override was toggled
 	if(!getPANEL_BUMPER_OVERRIDE()) {
 		//ResetBumperThreshold();
+	}
+}
+
+static void setMotors(void)
+{
+	int16_t speed;
+	int16_t dir;
+	speed = getWirelessPropJoySpeed();
+	dir = getWirelessPropJoyDirection();
+	if (speed) {
+		speed = (speed - 116) * 0.7;
+	}
+	if (dir) {
+		dir = (dir - 118) * 0.4;
+	}
+
+	//printf("Speed: %d Dir: %d\n", speed, dir);
+	char lcdLine1[17];
+	char lcdLine2[17];
+	lcdLine1[16] = '\0';
+	lcdLine2[16] = '\0';
+	sprintf(lcdLine1, "Speed: %d", speed);
+	sprintf(lcdLine2, " Turn: %d", dir);
+	lcdText(lcdLine1, lcdLine2, 0);
+
+	if (speed >= 0) {
+		if (speed > 127)
+		speed = 127;
+		sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MIXED_MODE, speed);
+	} else {
+		speed = -speed;
+		if (speed > 127)
+		speed = 127;
+		sendMotorCommand(MOTOR_CMD_DRIVE_BACKWARDS_MIXED_MODE, speed);
+	}
+	if (dir >= 0) {
+		if (dir > 127)
+		dir = 127;
+		sendMotorCommand(MOTOR_CMD_TURN_RIGHT_MIXED_MODE, dir);
+	} else {
+		dir = -dir;
+		if (dir > 127)
+		dir = 127;
+		sendMotorCommand(MOTOR_CMD_TURN_LEFT_MIXED_MODE, dir);
 	}
 }
 
@@ -97,7 +141,7 @@ int main( void )
 
 	initLCDDriver();
 
-	WDT_EnableAndSetTimeout(WDT_PER_512CLK_gc);	//set watchdog timer for 0.5s period
+	WDT_EnableAndSetTimeout(WDT_PER_128CLK_gc);	//set watchdog timer for 0.125s period
 
 	printf("\nReset\n");
 
@@ -115,7 +159,9 @@ int main( void )
 	while(1) {
 		WDT_Reset();
 //		dbgLEDtgl();
-		lcdText("PWCT  Build Date", "     " __DATE__, 0);
+		//lcdText("PWCT  Build Date", "     " __DATE__, 0);
+
+		setMotors();
 
 		//check inputs for state changes
 		SampleInputs();
@@ -127,7 +173,7 @@ int main( void )
 
 //		PrintLACurrents();
 
-		if(EmergencyStopPressed()) {
+		if(PanelEStopPressed() || getInstructorEStop()) {
 			state = IDLE;
 		}
 		else if(!limitSwitchPressedFlag) {
@@ -154,13 +200,13 @@ int main( void )
 		case IDLE:
 //			dbgLEDset();
 			StopPlatform();
-			StopMove();
+			OmniStopMove();
 			//turn off platform down LED
 			PORTK.OUTCLR = PIN5_bm;
 			break;
 		case LOAD:
 //			dbgLEDset();
-			StopMove();
+			OmniStopMove();
 			switch(actuatorSwitchState) {
 			case 0:	//actuator switch not pressed, stop platform
 				StopPlatform();
@@ -178,7 +224,7 @@ int main( void )
 		case MOVE:
 //			dbgLEDclr();
 			StopPlatform();
-			Move(moveDir);
+			OmniMove(moveDir);
 			//turn off platform down LED
 			PORTK.OUTCLR = PIN5_bm;
 			break;

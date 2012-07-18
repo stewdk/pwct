@@ -116,8 +116,6 @@ ISR(PORTH_INT0_vect)
 	if (flags & 0x40) {
 		//reset packet watchdog timer
 		TCF0.CNT = 0;
-		//update remote variables
-		SetInstructorRemote();
 	}
 }
 

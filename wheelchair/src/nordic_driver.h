@@ -94,6 +94,17 @@ void nordic_TransmitData(NORDIC_PACKET * packet);
 void nordic_PowerDown(void);
 void nordic_PowerUp(void);
 
+uint8_t getInstructorEStop();
+uint8_t getInstructorLAUp();
+uint8_t getInstructorLADown();
+uint8_t getInstructorForward();
+uint8_t getInstructorReverse();
+uint8_t getInstructorLeft();
+uint8_t getInstructorRight();
+
+uint8_t getWirelessPropJoySpeed(void);
+uint8_t getWirelessPropJoyDirection(void);
+
 //nordic_IRQ() is called from an ISR in nordic_hardware_specific.c
 //triggered by the falling edge of the IRQ pin from the nordic chip
 uint8_t nordic_IRQ(void);

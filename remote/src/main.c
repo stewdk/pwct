@@ -46,8 +46,6 @@ int main(void)
 	nordic_Initialize(0);
 	sbi(MCUCR, SM1);	//Power Down sleep mode
 
-	nordic_Initialize(0);
-
 /*
 	i = 0;
 	while(1) {
