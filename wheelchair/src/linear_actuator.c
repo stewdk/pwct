@@ -147,6 +147,7 @@ int8_t RaisePlatform(void)
 }
 
 // Recharge Bootstrap Cap
+// necessary for the LT1160 to turn on the top mosfet
 ISR(TCE0_OVF_vect)
 {
 	//turn off top fets

@@ -182,9 +182,9 @@ int main( void )
 		else if( (state == IDLE || state == LOAD) && actuatorSwitchState) {
 			state = LOAD;
 		}
-		else if(state == LOAD && limitSwitchPressedFlag) {
-			state = IDLE;
-		}
+		//else if(state == LOAD && limitSwitchPressedFlag) {
+		//	state = IDLE;
+		//}
 		else if(moveDir != 0) {
 			state = MOVE;
 		}
