@@ -107,6 +107,16 @@ static void setMotors(void)
 	}
 }
 
+static void eStop(void)
+{
+	motorEStop();
+	lcdText("E-stop", "", 0);
+	while (1)
+	{
+		WDT_Reset();
+	}
+}
+
 /*! \brief Main function
  *
  *  This function initializes the hardware, starts monitoring input signals.
@@ -174,7 +184,7 @@ int main( void )
 //		PrintLACurrents();
 
 		if(PanelEStopPressed() || getInstructorEStop()) {
-			state = IDLE;
+			eStop();
 		}
 		else if(!limitSwitchPressedFlag) {
 			state = LOAD;

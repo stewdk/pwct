@@ -61,6 +61,7 @@ int main(void)
 	while(1) {
 		tglLED();
 		sendData();
+		_delay_ms(5);
 	}
 
 #else // INSTRUCTOR_REMOTE

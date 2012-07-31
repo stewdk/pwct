@@ -9,8 +9,6 @@
 #include "nordic_hardware_specific.h"
 #include "remote_hardware.h"
 
-#define USE_ENHANCED_SHOCKBURST	1
-
 static volatile int8_t RX_DATA_READY_FLAG = 0;
 static volatile int8_t TX_DATA_SENT_FLAG = 0;
 static volatile int8_t MAX_RETRANSMITS_READY_FLAG = 0;
@@ -127,23 +125,19 @@ int8_t nordic_Initialize(uint8_t receiver)
 	}
 	err = nordic_WriteRegister(CONFIG_nReg, configRegValue, NULL);
 
-#if USE_ENHANCED_SHOCKBURST
 	//enable auto acknowledge on pipe 0 and 1
 	err = nordic_WriteRegister(EN_AA_nReg, 0x03, NULL);
 
-	//enable auto retransmit, try 5 times with delay of 250us
-	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x05, NULL);
-	//todo: When multiple PTXs are transmitting to a PRX, the ARD can be used to skew the auto retransmission so that they only block each other once.
-#else
-	//Disable auto acknowledge
-	err = nordic_WriteRegister(EN_AA_nReg, 0x00, NULL);
-
-	//Disable auto retransmit
+#ifdef INSTRUCTOR_REMOTE
+	//enable auto retransmit, try 15 times with delay of 500us
+	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x1F, NULL);
+#else //STUDENT_JOYSTICK
+	//disable auto retransmit
 	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x00, NULL);
 #endif
 
-	//todo: enable only 0 or 1 ?
 	//EN_RXADDR_nReg	Default data pipe 0 and 1 enabled
+	//    todo: enable only 0 or 1 ?
 	//SETUP_AW_nReg		Default address width of 5 bytes
 
 	//Set RF Channel as 0x02
@@ -169,11 +163,19 @@ int8_t nordic_Initialize(uint8_t receiver)
 	err = nordic_WriteRegisters(RX_ADDR_P1_nReg, datas, 5, NULL);
 
 	//Tx Address
+#ifdef INSTRUCTOR_REMOTE
 	datas[0] = 0xE7;
 	datas[1] = 0xE7;
 	datas[2] = 0xE7;
 	datas[3] = 0xE7;
 	datas[4] = 0xE7;
+#else //STUDENT_JOYSTICK
+	datas[0] = 0xC2;
+	datas[1] = 0xC2;
+	datas[2] = 0xC2;
+	datas[3] = 0xC2;
+	datas[4] = 0xC2;
+#endif
 	err = nordic_WriteRegisters(TX_ADDR_nReg, datas, 5, NULL);
 
 	//Set Payload width of 4 bytes
