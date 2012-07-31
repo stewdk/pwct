@@ -116,29 +116,24 @@ static inline int8_t nordic_ReadRegisters(uint8_t reg, uint8_t *data, uint8_t si
 	return nordic_SendCommand(R_REGISTER_nCmd | reg, NULL, data, size, status);
 }
 
-static void setDirTx(void)
+static inline void setDirTx(void)
 {
 	standbyMode();
 	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; TX mode; PWR_UP bit set
 	nordic_WriteRegister(CONFIG_nReg, 0x0A, NULL);
 }
 
-/*
-static void setDirRx(void)
+static inline void setDirRx(void)
 {
 	standbyMode();
 	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; RX mode; PWR_UP bit set
 	nordic_WriteRegister(CONFIG_nReg, 0x0B, NULL);
 	activeMode();
 }
-*/
 
 int8_t nordic_Initialize(uint8_t receiver)
 {
-	//todo: EN_RXADDR
-	//After wednesday: data pipe 0 and 1 with unique 5-byte address
-	//Before wednesday: get prop. data from wireless
-	uint8_t data;
+	uint8_t configRegValue;
 	uint8_t datas[10];
 	int8_t err = 0;
 
@@ -146,15 +141,15 @@ int8_t nordic_Initialize(uint8_t receiver)
 
 	//Initialize Nordic nRF24L01+
 	if (receiver) {
-		data = 0x09;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; RX mode
+		configRegValue = 0x09;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; RX mode
 	} else {
-		data = 0x08;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; TX mode
+		configRegValue = 0x08;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; TX mode
 	}
-	err = nordic_WriteRegister(CONFIG_nReg, data, NULL);
+	err = nordic_WriteRegister(CONFIG_nReg, configRegValue, NULL);
 
 #if USE_ENHANCED_SHOCKBURST
-	//enable auto acknowledge on pipe 0
-	err = nordic_WriteRegister(EN_AA_nReg, 0x01, NULL);
+	//enable auto acknowledge on pipe 0 and 1
+	err = nordic_WriteRegister(EN_AA_nReg, 0x03, NULL);
 
 	//enable auto retransmit, try 5 times with delay of 250us
 	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x05, NULL);
@@ -165,28 +160,43 @@ int8_t nordic_Initialize(uint8_t receiver)
 	//Disable auto retransmit
 	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x00, NULL);
 #endif
+
 	//EN_RXADDR_nReg	Default data pipe 0 and 1 enabled
 	//SETUP_AW_nReg		Default address width of 5 bytes
-	//SETUP_RETR_nReg	Only used with auto acknowledge
 
 	//Set RF Channel as 0x02
 	err = nordic_WriteRegister(RF_CH_nReg, 0x02, NULL);
 
+	//Set output power 0dB, data rate of 1Mbps
+	err = nordic_WriteRegister(RF_SETUP_nReg, 0x07, NULL);
 
-	err = nordic_WriteRegister(RF_SETUP_nReg, 0x07, NULL);	//Set output power 0dB, data rate of 1MHz
-//	err = nordic_WriteRegister(RF_SETUP_nReg, 0x01, NULL);	//Set output power -18dB, data rate of 1MHz
+	//Rx Address data pipe 0
+	datas[0] = 0xE7;
+	datas[1] = 0xE7;
+	datas[2] = 0xE7;
+	datas[3] = 0xE7;
+	datas[4] = 0xE7;
+	err = nordic_WriteRegisters(RX_ADDR_P0_nReg, datas, 5, NULL);
 
+	//Rx Address data pipe 1
+	datas[0] = 0xC2;
+	datas[1] = 0xC2;
+	datas[2] = 0xC2;
+	datas[3] = 0xC2;
+	datas[4] = 0xC2;
+	err = nordic_WriteRegisters(RX_ADDR_P1_nReg, datas, 5, NULL);
 
-	//Set Payload of 4 bytes
+	//Tx Address (TX mode only)
+	datas[0] = 0xE7;
+	datas[1] = 0xE7;
+	datas[2] = 0xE7;
+	datas[3] = 0xE7;
+	datas[4] = 0xE7;
+	err = nordic_WriteRegisters(TX_ADDR_nReg, datas, 5, NULL);
+
+	//Set Payload width of 4 bytes
 	err = nordic_WriteRegister(RX_PW_P0_nReg, sizeof(LAST_PACKET.data.array), NULL);
-
-	//Rx Address data pipe
-	datas[0] = datas[1] = datas[2] = datas[3] = 0xE7;
-	err = nordic_WriteRegisters(RX_ADDR_P0_nReg, datas, 4, NULL);
-
-	//Tx Address data pipe
-	datas[0] = datas[1] = datas[2] = datas[3] = 0xE7;
-	err = nordic_WriteRegisters(TX_ADDR_nReg, datas, 4, NULL);
+	err = nordic_WriteRegister(RX_PW_P1_nReg, sizeof(LAST_PACKET.data.array), NULL);
 
 	//clear fifos (necessary for wdt/soft reset)
 	nordic_SendCommand(FLUSH_RX_nCmd, NULL, NULL, 0, NULL);
@@ -195,13 +205,8 @@ int8_t nordic_Initialize(uint8_t receiver)
 	//clear interrupts (necessary for wdt/soft reset)
 	nordic_WriteRegister(STATUS_nReg, 0x70, NULL);
 
-	//RX on IRQ, PWR_UP bit set, CRC enabled, RX mode
-	if (receiver) {
-		data = 0x0B;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; RX mode; PWR_UP bit set
-	} else {
-		data = 0x0A;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; TX mode; PWR_UP bit set
-	}
-	err = nordic_WriteRegister(CONFIG_nReg, data, NULL);
+	configRegValue |= 0x02; //PWR_UP bit set
+	err = nordic_WriteRegister(CONFIG_nReg, configRegValue, NULL);
 
 	//wait for startup
 	_delay_us(1500);

@@ -103,7 +103,7 @@ void testNordicWireless(void)
 		if(nordic_GetNewPacket(&packet) != 0) {
 			char b[9];
 			byte_to_binary(b, packet.data.array[0]);
-			printf("RX 0b%s", b);
+			printf("RX pipe=%d, 0b%s", packet.rxpipe, b);
 			//printf("RX 0x%02X", packet.data.array[0]);
 			for(i = 1; i < sizeof(packet.data.array); i++) {
 				printf(", %3d", packet.data.array[i]);

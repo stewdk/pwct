@@ -159,12 +159,8 @@ uint8_t noButtonsPressed(void)
 */
 ISR(ADC_vect)
 {
-	// Todo: this is where we need to fix the up/down, left/right problem (I think)
 	if (ADMUX == ADMUX_ADC5_bm)
 	{
-		if (valueADC5 != ADCH) {
-			BUTTON_CHANGED_FLAG = 1;
-		}
 		valueADC5 = ADCH;
 
 		if(valueADC5 > 170 && (JOY_STATE & 0b01100000) != 0b00100000) {	//left
@@ -183,9 +179,6 @@ ISR(ADC_vect)
 	}
 	else
 	{
-		if (valueADC6 != ADCH) {
-			BUTTON_CHANGED_FLAG = 1;
-		}
 		valueADC6 = ADCH;
 
 		if(valueADC6 > 170 && (JOY_STATE & 0b00011000) != 0b00010000) {	//down

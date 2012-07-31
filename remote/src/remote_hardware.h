@@ -8,7 +8,22 @@
 #ifndef REMOTE_HARDWARE_H_
 #define REMOTE_HARDWARE_H_
 
-#include "avr/io.h"
+#include <avr/io.h>
+
+//#define INSTRUCTOR_REMOTE
+#define STUDENT_JOYSTICK
+
+#ifndef INSTRUCTOR_REMOTE
+#ifndef STUDENT_JOYSTICK
+#error "Please #define either INSTRUCTOR_REMOTE or WIRELESS_JOYSTICK in remote_hardware.h"
+#endif
+#endif
+
+#ifdef INSTRUCTOR_REMOTE
+#ifdef STUDENT_JOYSTICK
+#error "Please only #define one of INSTRUCTOR_REMOTE or WIRELESS_JOYSTICK in remote_hardware.h"
+#endif
+#endif
 
 uint8_t GetADC5(void);
 uint8_t GetADC6(void);
