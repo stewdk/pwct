@@ -37,8 +37,8 @@ static void sendData(void)
 
 	testPacket.data.array[0] = GetButton() | GetJoyState();
 #ifdef STUDENT_JOYSTICK
-	testPacket.data.array[1] = shearMapX(x, y);
-	testPacket.data.array[2] = shearMapY(x, y);
+	testPacket.data.array[1] = x; // shearMapX(x, y);
+	testPacket.data.array[2] = y; // shearMapY(x, y);
 #else //INSTRUCTOR_REMOTE
 	testPacket.data.array[1] = x;
 	testPacket.data.array[2] = y;

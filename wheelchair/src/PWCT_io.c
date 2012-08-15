@@ -16,10 +16,6 @@
 #include "util.h"
 #include "PWCT_io.h"
 
-//debounce timers 1tick = 8us
-//1250 ticks = 10ms
-#define DEBOUNCE_PERIOD 1250
-
 //pulse timer 1tick = 8us
 //31250 ticks = 250ms
 #define PGDT_ESTOP_PULSE_PERIOD 31250
@@ -28,7 +24,7 @@
 
 /* Input/Output List
  *  Item							Pin			In/Out		Note
- *  Prop. Joy Detect				PK7			Input		Debounce
+ *  Prop. Joy Detect				PK7			Input
  *  Prop. Joy Speed (Fwd/Rev)		PA1			Input		A/D
  *  Prop. Joy Direction (L/R)		PA2			Input		A/D
  *	Bumper							PA7			Input		optional A/D
@@ -36,23 +32,23 @@
  *	Limit Switch 2					PA4			Input		A/D
  *	Limit Switch 3					PA5			Input		A/D
  *	Limit Switch 4					PA6			Input		A/D
- *	Student Forward					PJ3			Input		Debounce
- *	Student Reverse					PJ4			Input		Debounce
- *	Student Left					PJ5			Input		Debounce
- *	Student Right					PJ6			Input		Debounce
- *	Student Fifth					PJ7			Input		Debounce
- *	Buddy Button Forward			PH6			Input		Debounce
- *	Buddy Button Reverse			PH7			Input		Debounce
- *	Buddy Button Left				PJ0			Input		Debounce
- *	Buddy Button Right				PJ1			Input		Debounce
- *	Buddy Button Fifth				PJ2			Input		Debounce
- *	Emergency Stop					PK2			Input		Debounce
+ *	Student Forward					PJ3			Input
+ *	Student Reverse					PJ4			Input
+ *	Student Left					PJ5			Input
+ *	Student Right					PJ6			Input
+ *	Student Fifth					PJ7			Input
+ *	Buddy Button Forward			PH6			Input
+ *	Buddy Button Reverse			PH7			Input
+ *	Buddy Button Left				PJ0			Input
+ *	Buddy Button Right				PJ1			Input
+ *	Buddy Button Fifth				PJ2			Input
+ *	Emergency Stop					PK2			Input
  *	Omni+ On/Off Switch				PK6			Output
- *	Panel LA Up						PK0			Input		Debounce
- *	Panel LA Down					PK3			Input		Debounce
+ *	Panel LA Up						PK0			Input
+ *	Panel LA Down					PK3			Input
  *	Panel LA LED					PK5			Output
  *	Panel Bumper Override LED		PK4			Output
- *	Panel Bumper Override Switch	PK1			Input		Debounce
+ *	Panel Bumper Override Switch	PK1			Input
  *	Omni+ Out Forward				PH1			Output
  *	Omni+ Out Reverse				PH0			Output
  *	Omni+ Out Left					PH4			Output
@@ -62,8 +58,8 @@
  *	LCD Button 2					PQ1			Input		Debounce
  *	LCD Button 3					PQ2			Input		Debounce
  *	LCD Button 4					PQ3			Input		Debounce
- *	LCD Button 5					PR0			Input		Debounce
- *	Fwd/Rev Invert					PR1			Input		Debounce
+ *	Extra I/O pin					PR0			I/O
+ *	Fwd/Rev Invert					PR1			Input
  */
 
 //these input flags are all active low
@@ -84,6 +80,9 @@ static uint8_t PANEL_BUMPER_OVERRIDE;
 static uint8_t PROP_JOY_DETECT;
 static uint8_t INVERT_SWITCH;
 static uint8_t LIMIT_SWITCH;
+
+#define INPUT_COUNT 4
+static debounced_input gDebouncedInputs[INPUT_COUNT];
 
 static volatile uint16_t gWiredPropJoySpeed;
 static volatile uint16_t gWiredPropJoyDirection;
@@ -119,8 +118,9 @@ static void joystickADCsetup(void)
 	ADC_Wait_32MHz(&ADCA);
 }
 
-void initPWCTio(void)
+static void setupEstopTimer()
 {
+	// TCF1 is the timer used for Omni E-stop pulse
 	//turn off timers
 	TC1_ConfigClockSource( &TCF1, TC_CLKSEL_OFF_gc );
 
@@ -134,6 +134,60 @@ void initPWCTio(void)
 
 	//start clocks
 	TC1_ConfigClockSource( &TCF1, TC_CLKSEL_DIV256_gc );
+}
+
+static void setupDebouncedInputs()
+{
+	//LCD Button 1 PQ0
+	gDebouncedInputs[0].port = &PORTQ;
+	gDebouncedInputs[0].pin_bm = PIN0_bm;
+
+	//LCD Button 2 PQ1
+	gDebouncedInputs[1].port = &PORTQ;
+	gDebouncedInputs[1].pin_bm = PIN1_bm;
+
+	//LCD Button 3 PQ2
+	gDebouncedInputs[2].port = &PORTQ;
+	gDebouncedInputs[2].pin_bm = PIN2_bm;
+
+	//LCD Button 4 PQ3
+	gDebouncedInputs[3].port = &PORTQ;
+	gDebouncedInputs[3].pin_bm = PIN3_bm;
+
+	int i;
+	for (i = 0; i < INPUT_COUNT; i++)
+	{
+		// Set as input
+		gDebouncedInputs[i].port->DIRCLR = gDebouncedInputs[i].pin_bm;
+
+		// Enable pull-up
+		PORTCFG.MPCMASK = gDebouncedInputs[i].pin_bm;
+		gDebouncedInputs[i].port->PIN0CTRL = PORT_OPC_PULLUP_gc;
+
+		// Default values
+		gDebouncedInputs[i].previous_values = 0xFF;
+		gDebouncedInputs[i].debounced_value = 1;
+		gDebouncedInputs[i].previous_debounced_value = 1;
+	}
+}
+
+static void setupDebounceTimer()
+{
+	// TCC1 is the timer used for debouncing
+	TCC1.CTRLA = TC_CLKSEL_DIV4_gc;
+	//TCC1.CTRLA = TC_CLKSEL_DIV64_gc;
+	TCC1.CTRLB = TC_WGMODE_FRQ_gc;
+	TCC1.INTCTRLB = TC_CCAINTLVL_LO_gc;
+	TCC1.CCA = 40000; // Goal: interrupt every 5 milliseconds
+}
+
+void initPWCTio(void)
+{
+	setupEstopTimer();
+
+	setupDebouncedInputs();
+
+	setupDebounceTimer();
 
 	PORT_ConfigurePins( &PORTH, PIN6_bm | PIN7_bm,                     false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // BB fwd, BB rev
 	PORT_ConfigurePins( &PORTJ, 0xFF,                                  false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // remaining BB, switch joystick in
@@ -333,6 +387,37 @@ uint16_t getWiredPropJoyDirection(void)
 	return returnValue;
 }
 
+static uint8_t isInputFallingEdge(uint8_t i)
+{
+	uint8_t isFallingEdge = 0;
+	if (gDebouncedInputs[i].debounced_value == 0 && gDebouncedInputs[i].debounced_value != gDebouncedInputs[i].previous_debounced_value)
+	{
+		isFallingEdge = 1;
+	}
+	gDebouncedInputs[i].previous_debounced_value = gDebouncedInputs[i].debounced_value;
+	return isFallingEdge;
+}
+
+uint8_t lcdUpFallingEdge(void)
+{
+	return isInputFallingEdge(3);
+}
+
+uint8_t lcdDownFallingEdge(void)
+{
+	return isInputFallingEdge(2);
+}
+
+uint8_t lcdRightFallingEdge(void)
+{
+	return isInputFallingEdge(0);
+}
+
+uint8_t lcdLeftFallingEdge(void)
+{
+	return isInputFallingEdge(1);
+}
+
 bool LimitSwitchPressed(void)
 {
 	return !LIMIT_SWITCH;
@@ -398,4 +483,22 @@ ISR(ADCA_CH1_vect)
 	AVR_ENTER_CRITICAL_REGION();
 	gWiredPropJoyDirection = ADC_ResultCh_GetWord(&ADCA.CH1);
 	AVR_LEAVE_CRITICAL_REGION();
+}
+
+ISR(TCC1_CCA_vect)
+{
+	int i;
+	for (i = 0; i < INPUT_COUNT; i++)
+	{
+		gDebouncedInputs[i].previous_values = (gDebouncedInputs[i].previous_values << 1) | ((gDebouncedInputs[i].port->IN & gDebouncedInputs[i].pin_bm) ? 1 : 0);
+
+		if (gDebouncedInputs[i].previous_values == 0xFF)
+		{
+			gDebouncedInputs[i].debounced_value = 1;
+		}
+		else if (gDebouncedInputs[i].previous_values == 0)
+		{
+			gDebouncedInputs[i].debounced_value = 0;
+		}
+	}
 }

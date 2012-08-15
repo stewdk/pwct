@@ -60,6 +60,9 @@ void initMotorDriver(void) {
 	// Enable ramping 4.2s
 	//sendMotorCommand(MOTOR_CMD_RAMPING, 14);
 	sendMotorCommand(MOTOR_CMD_RAMPING, 20);
+
+	// Dead band
+	sendMotorCommand(MOTOR_CMD_DEADBAND, 3);
 }
 
 void motorEStop(void)

@@ -10,6 +10,14 @@
 
 #include "../atmel/avr_compiler.h"
 
+typedef struct {
+	PORT_t *port;
+	uint8_t pin_bm;
+	volatile uint8_t previous_values;
+	volatile uint8_t debounced_value;
+	uint8_t previous_debounced_value;
+} debounced_input;
+
 void initPWCTio(void);
 void SampleInputs(void);
 void OmniStopMove(void);
@@ -18,6 +26,10 @@ uint8_t GetMoveDirection(void);
 uint8_t getPANEL_BUMPER_OVERRIDE(void);
 uint16_t getWiredPropJoySpeed(void);
 uint16_t getWiredPropJoyDirection(void);
+uint8_t lcdUpFallingEdge(void);
+uint8_t lcdDownFallingEdge(void);
+uint8_t lcdRightFallingEdge(void);
+uint8_t lcdLeftFallingEdge(void);
 
 bool LimitSwitchPressed(void);
 uint8_t ActuatorSwitchPressed(void);

@@ -63,17 +63,28 @@ static void pwctIOLogic(void)
 	}
 }
 
-static void setMotors(void)
+static void setMotors(double speedFactor)
 {
 	int16_t speed;
 	int16_t dir;
 	speed = getWirelessPropJoySpeed();
 	dir = getWirelessPropJoyDirection();
 	if (speed) {
-		speed = (speed - 116) * 0.7;
+		speed = (speed - 116) * speedFactor;
 	}
 	if (dir) {
 		dir = (dir - 118) * 0.4;
+	}
+
+	if (speed > 127) {
+		speed = 127;
+	} else if (speed < -127) {
+		speed = -127;
+	}
+	if (dir > 127) {
+		dir = 127;
+	} else if (dir < -127) {
+		dir = -127;
 	}
 
 	//printf("Speed: %d Dir: %d\n", speed, dir);
@@ -81,28 +92,25 @@ static void setMotors(void)
 	char lcdLine2[17];
 	lcdLine1[16] = '\0';
 	lcdLine2[16] = '\0';
-	sprintf(lcdLine1, "Speed: %d", speed);
-	sprintf(lcdLine2, " Turn: %d", dir);
+
+	//sprintf(lcdLine1, "Speed: %d", speed);
+	//sprintf(lcdLine2, " Turn: %d", dir);
+
+	sprintf(lcdLine1, "SpeedFactor=%.2f", speedFactor);
+	sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
+
 	lcdText(lcdLine1, lcdLine2, 0);
 
 	if (speed >= 0) {
-		if (speed > 127)
-		speed = 127;
 		sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MIXED_MODE, speed);
 	} else {
 		speed = -speed;
-		if (speed > 127)
-		speed = 127;
 		sendMotorCommand(MOTOR_CMD_DRIVE_BACKWARDS_MIXED_MODE, speed);
 	}
 	if (dir >= 0) {
-		if (dir > 127)
-		dir = 127;
 		sendMotorCommand(MOTOR_CMD_TURN_RIGHT_MIXED_MODE, dir);
 	} else {
 		dir = -dir;
-		if (dir > 127)
-		dir = 127;
 		sendMotorCommand(MOTOR_CMD_TURN_LEFT_MIXED_MODE, dir);
 	}
 }
@@ -127,6 +135,7 @@ int main( void )
 	uint8_t actuatorSwitchState = 0;
 	uint8_t limitSwitchPressedFlag = 0;
 	states state = IDLE;
+	double speedFactor = 0.7;
 
 	//Setup the 32MHz Clock
 	//start 32MHz oscillator
@@ -165,13 +174,33 @@ int main( void )
 
 	//testMotorDriver();
 
+	lcdText("PWCT  Build Date", "     " __DATE__, 0);
+
 	//Run Operational State Machine
 	while(1) {
 		WDT_Reset();
 //		dbgLEDtgl();
-		//lcdText("PWCT  Build Date", "     " __DATE__, 0);
 
-		setMotors();
+		if (lcdUpFallingEdge())
+		{
+			speedFactor += 0.05;
+		}
+		if (lcdDownFallingEdge())
+		{
+			speedFactor -= 0.05;
+		}
+		if (lcdRightFallingEdge())
+		{
+			//printf("Right\n");
+			//lcdText("Right", "", 0);
+		}
+		if (lcdLeftFallingEdge())
+		{
+			//printf("Left\n");
+			//lcdText("Left", "", 0);
+		}
+
+		setMotors(speedFactor);
 
 		//check inputs for state changes
 		SampleInputs();
