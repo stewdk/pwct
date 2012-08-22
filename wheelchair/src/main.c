@@ -16,91 +16,48 @@
  *
  *****************************************************************************/
 
+#include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>     // strtol
-#include "../atmel/avr_compiler.h"
 #include "../atmel/clksys_driver.h"
+#include "../atmel/wdt_driver.h"
 #include "util.h"
 #include "nordic_driver.h"
 #include "linear_actuator.h"
 #include "PWCT_io.h"
-#include "../atmel/wdt_driver.h"
 #include "motor_driver.h"
 #include "lcd_driver.h"
+#include "menu.h"
 //#include "test.h"
 
-//static char GSTR[64];
-
-static void pwctIOLogic(void)
+static void getProportionalMoveDirection(int16_t *speed, int16_t *dir)
 {
-	static uint8_t estopDebounceFlg = 0;
-	static uint8_t EstopPulseSent = 0;
-	if(!PanelEStopPressed()) { // Not pressed
-		estopDebounceFlg = 0;
-		EstopPulseSent = 0;
+	*speed = getWirelessPropJoySpeed();
+	*dir = getWirelessPropJoyDirection();
+	if (*speed) {
+		*speed = (*speed - 116) * menuGetThrow();
 	}
-	else if(!EstopPulseSent) { // Pressed
-		estopDebounceFlg++;
-		if(estopDebounceFlg >= 3) {
-			PulsePGDTEstop();
-			EstopPulseSent = 1;
-		}
+	if (*dir) {
+		*dir = (*dir - 118) * 0.4;
 	}
 
-	//set bumper override led
-	if(getPANEL_BUMPER_OVERRIDE()) {
-		PORTK.OUTCLR = PIN4_bm;
-	} else {
-		PORTK.OUTSET = PIN4_bm;
+	if (*speed > 127) {
+		*speed = 127;
+	} else if (*speed < -127) {
+		*speed = -127;
 	}
-
-	//check if panel bumper override was toggled
-	if(!getPANEL_BUMPER_OVERRIDE()) {
-		//ResetBumperThreshold();
+	if (*dir > 127) {
+		*dir = 127;
+	} else if (*dir < -127) {
+		*dir = -127;
 	}
 }
 
-static void setMotors(double speedFactor)
+static void setMotors(int16_t speed, int16_t dir)
 {
-	int16_t speed;
-	int16_t dir;
-	speed = getWirelessPropJoySpeed();
-	dir = getWirelessPropJoyDirection();
-	if (speed) {
-		speed = (speed - 116) * speedFactor;
-	}
-	if (dir) {
-		dir = (dir - 118) * 0.4;
-	}
-
-	if (speed > 127) {
-		speed = 127;
-	} else if (speed < -127) {
-		speed = -127;
-	}
-	if (dir > 127) {
-		dir = 127;
-	} else if (dir < -127) {
-		dir = -127;
-	}
-
-	//printf("Speed: %d Dir: %d\n", speed, dir);
-	char lcdLine1[17];
-	char lcdLine2[17];
-	lcdLine1[16] = '\0';
-	lcdLine2[16] = '\0';
-
-	//sprintf(lcdLine1, "Speed: %d", speed);
-	//sprintf(lcdLine2, " Turn: %d", dir);
-
-	sprintf(lcdLine1, "SpeedFactor=%.2f", speedFactor);
-	sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
-
-	lcdText(lcdLine1, lcdLine2, 0);
-
 	if (speed >= 0) {
 		sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MIXED_MODE, speed);
 	} else {
@@ -133,9 +90,10 @@ int main( void )
 {
 	uint8_t moveDir = 0;
 	uint8_t actuatorSwitchState = 0;
-	uint8_t limitSwitchPressedFlag = 0;
 	states state = IDLE;
-	double speedFactor = 0.7;
+	states previousState = IDLE;
+	int16_t speed;
+	int16_t dir;
 
 	//Setup the 32MHz Clock
 	//start 32MHz oscillator
@@ -179,72 +137,52 @@ int main( void )
 	//Run Operational State Machine
 	while(1) {
 		WDT_Reset();
-//		dbgLEDtgl();
 
-		if (lcdUpFallingEdge())
-		{
-			speedFactor += 0.05;
-		}
-		if (lcdDownFallingEdge())
-		{
-			speedFactor -= 0.05;
-		}
-		if (lcdRightFallingEdge())
-		{
-			//printf("Right\n");
-			//lcdText("Right", "", 0);
-		}
-		if (lcdLeftFallingEdge())
-		{
-			//printf("Left\n");
-			//lcdText("Left", "", 0);
-		}
-
-		setMotors(speedFactor);
+		getProportionalMoveDirection(&speed, &dir);
+		menuUpdate(speed, dir);
 
 		//check inputs for state changes
 		SampleInputs();
-		pwctIOLogic();
-		moveDir = GetMoveDirection();
+		moveDir = getSwitchMoveDirection();
 
 		actuatorSwitchState = ActuatorSwitchPressed();
-		limitSwitchPressedFlag = LimitSwitchPressed();
 
-//		PrintLACurrents();
-
-		if(PanelEStopPressed() || getInstructorEStop()) {
+		if (PanelEStopPressed() || getInstructorEStop()) {
 			eStop();
-		}
-		else if(!limitSwitchPressedFlag) {
+		} else if (!LimitSwitchPressed() || ((state == IDLE || state == LOAD) && actuatorSwitchState)) {
 			state = LOAD;
-		}
-		else if( (state == IDLE || state == LOAD) && actuatorSwitchState) {
-			state = LOAD;
-		}
-		//else if(state == LOAD && limitSwitchPressedFlag) {
-		//	state = IDLE;
-		//}
-		else if(moveDir != 0) {
+		} else if (LimitSwitchPressed() && (moveDir != 0 || speed != 0 || dir != 0)) {
 			state = MOVE;
-		}
-		else {
+		} else {
 			state = IDLE;
 		}
 
-//		getStateStr(state, GSTR);
-//		printf("State:%s\tActuator:%2d\tLimit:%2d\tMove:%2d\r", GSTR, actuatorSwitchState, limitSwitchPressedFlag, moveDir);
+		/*
+		if (previousState != state)
+		{
+			switch (state) {
+			case IDLE:
+				printf("Idle\n");
+				break;
+			case MOVE:
+				printf("Move\n");
+				break;
+			case LOAD:
+				printf("Load\n");
+				break;
+			}
+		}
+		*/
 
 		//set state output
 		switch(state) {
 		case IDLE:
-//			dbgLEDset();
 			StopPlatform();
 			OmniStopMove();
 			//turn off platform down LED
 			PORTK.OUTCLR = PIN5_bm;
 			break;
 		case LOAD:
-//			dbgLEDset();
 			OmniStopMove();
 			switch(actuatorSwitchState) {
 			case 0:	//actuator switch not pressed, stop platform
@@ -261,14 +199,14 @@ int main( void )
 			PORTK.OUTSET = PIN5_bm;
 			break;
 		case MOVE:
-//			dbgLEDclr();
 			StopPlatform();
 			OmniMove(moveDir);
+			setMotors(speed, dir);
 			//turn off platform down LED
 			PORTK.OUTCLR = PIN5_bm;
 			break;
 		}
-//		_delay_ms(20);
+		previousState = state;
 	}
 	return 1;
 }

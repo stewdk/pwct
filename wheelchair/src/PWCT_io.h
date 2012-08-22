@@ -8,7 +8,9 @@
 #ifndef PWCT_IO_H_
 #define PWCT_IO_H_
 
-#include "../atmel/avr_compiler.h"
+#include <avr/io.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 typedef struct {
 	PORT_t *port;
@@ -22,7 +24,7 @@ void initPWCTio(void);
 void SampleInputs(void);
 void OmniStopMove(void);
 void OmniMove(uint8_t moveDir);
-uint8_t GetMoveDirection(void);
+uint8_t getSwitchMoveDirection(void);
 uint8_t getPANEL_BUMPER_OVERRIDE(void);
 uint16_t getWiredPropJoySpeed(void);
 uint16_t getWiredPropJoyDirection(void);

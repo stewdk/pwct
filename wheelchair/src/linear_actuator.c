@@ -4,7 +4,8 @@
  *  Created on: Mar 26, 2011
  *      Author: grant
  */
-#include "../atmel/avr_compiler.h"
+
+#include <avr/io.h>
 #include "linear_actuator.h"
 #include "../atmel/TC_driver.h"
 #include "../atmel/adc_driver.h"

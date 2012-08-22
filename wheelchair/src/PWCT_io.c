@@ -5,9 +5,9 @@
  *      Author: grant
  */
 
+#include <avr/io.h>
 #include <util/delay.h>
 #include <stdio.h>
-#include "../atmel/avr_compiler.h"
 #include "../atmel/TC_driver.h"
 #include "../atmel/port_driver.h"
 #include "../atmel/pmic_driver.h"
@@ -301,7 +301,7 @@ void OmniMove(uint8_t moveDir)
 //V = Reverse
 //L = Left
 //R = Right
-uint8_t GetMoveDirection(void)
+uint8_t getSwitchMoveDirection(void)
 {
 	uint8_t moveDir = 0;
 
