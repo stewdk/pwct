@@ -12,6 +12,7 @@
 
 void menuUpdate(int16_t speed, int16_t dir);
 float menuGetThrow(void);
+uint8_t menuGetCenterDeadBand(void);
 
 
 #endif /* MENU_H_ */

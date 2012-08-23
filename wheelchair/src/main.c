@@ -37,18 +37,52 @@ static void getProportionalMoveDirection(int16_t *speed, int16_t *dir)
 {
 	*speed = getWirelessPropJoySpeed();
 	*dir = getWirelessPropJoyDirection();
+
 	if (*speed) {
+		// fwd/rev offset, throw
 		*speed = (*speed - 116) * menuGetThrow();
 	}
+
 	if (*dir) {
-		*dir = (*dir - 118) * 0.4;
+		// right/left offset, throw
+		*dir = (*dir - 118) * menuGetThrow() * 0.75;
+	}
+
+	// center dead band
+	if (*speed > 0) {
+		*speed -= menuGetCenterDeadBand();
+		if (*speed < 0) {
+			*speed = 0;
+		}
+	}
+	if (*speed < 0) {
+		*speed += menuGetCenterDeadBand();
+		if (*speed > 0) {
+			*speed = 0;
+		}
+	}
+	if (*dir > 0) {
+		*dir -= menuGetCenterDeadBand();
+		if (*dir < 0) {
+			*dir = 0;
+		}
+	}
+	if (*dir < 0) {
+		*dir += menuGetCenterDeadBand();
+		if (*dir > 0) {
+			*dir = 0;
+		}
 	}
 
 	if (*speed > 127) {
+		// max forward speed
 		*speed = 127;
 	} else if (*speed < -127) {
+		// max reverse speed
 		*speed = -127;
 	}
+
+	// max turn speed
 	if (*dir > 127) {
 		*dir = 127;
 	} else if (*dir < -127) {
@@ -91,7 +125,7 @@ int main( void )
 	uint8_t moveDir = 0;
 	uint8_t actuatorSwitchState = 0;
 	states state = IDLE;
-	states previousState = IDLE;
+	//states previousState = IDLE;
 	int16_t speed;
 	int16_t dir;
 
@@ -206,7 +240,7 @@ int main( void )
 			PORTK.OUTCLR = PIN5_bm;
 			break;
 		}
-		previousState = state;
+		//previousState = state;
 	}
 	return 1;
 }
