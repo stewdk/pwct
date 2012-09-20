@@ -28,7 +28,7 @@
 // EEPROM variables and initial values
 // Note: the initial values are only updated when programming the EEPROM memory (wheelchair.eep)
 uint8_t EEMEM eepromMenuState = 0;
-float EEMEM eepromFwdThrow = 0.8;
+float EEMEM eepromFwdThrow = 1.0;
 float EEMEM eepromRevThrow = 0.8;
 float EEMEM eepromTurnThrow = 0.8;
 uint8_t EEMEM eepromTopFwdSpeed = 50;
@@ -37,6 +37,18 @@ uint8_t EEMEM eepromTopTurnSpeed = 20;
 uint8_t EEMEM eepromCenterDeadBand = 3;
 uint8_t EEMEM eepromAcceleration = 20;
 uint8_t EEMEM eepromPropAsSwitch = 0;
+
+uint8_t EEMEM eepromResetCount = 0;
+
+uint8_t menuGetResetCount()
+{
+	return eeprom_read_byte(&eepromResetCount);
+}
+
+void menuInit()
+{
+	eeprom_update_byte(&eepromResetCount, menuGetResetCount() + 1);
+}
 
 void menuUpdate(int16_t speed, int16_t dir)
 {
@@ -173,7 +185,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 		lcdLine1[0] = '\0';
 		break;
 	}
-	sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
+	sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, menuGetResetCount());
 
 	lcdText(lcdLine1, lcdLine2, 0);
 }

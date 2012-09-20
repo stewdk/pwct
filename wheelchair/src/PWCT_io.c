@@ -42,7 +42,7 @@
  *	Buddy Button Left				PJ0			Input
  *	Buddy Button Right				PJ1			Input
  *	Buddy Button Fifth				PJ2			Input
- *	Emergency Stop					PK2			Input
+ *	Emergency Stop					PK2			Input		Normally closed
  *	Omni+ On/Off Switch				PK6			Output
  *	Panel LA Up						PK0			Input
  *	Panel LA Down					PK3			Input
@@ -73,7 +73,7 @@ static uint8_t STUDENT_REVERSE;
 static uint8_t STUDENT_LEFT;
 static uint8_t STUDENT_RIGHT;
 static uint8_t STUDENT_FIFTH;
-static uint8_t PANEL_ESTOP;
+static uint8_t PANEL_ESTOP; // E-stop: normally closed switch
 static uint8_t PANEL_LA_UP;
 static uint8_t PANEL_LA_DOWN;
 static uint8_t PANEL_BUMPER_OVERRIDE;
@@ -451,7 +451,8 @@ uint8_t ActuatorSwitchPressed(void)
 
 bool PanelEStopPressed(void)
 {
-	return !PANEL_ESTOP;
+	// normally closed switch
+	return PANEL_ESTOP;
 }
 
 void PulsePGDTEstop(void)

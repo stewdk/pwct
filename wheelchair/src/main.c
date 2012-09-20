@@ -144,9 +144,9 @@ static void setMotors(int16_t speed, int16_t dir)
 static void eStop(void)
 {
 	motorEStop();
-	lcdText("E-stop", "", 0);
 	while (1)
 	{
+		lcdText("E-stop", "", 0);
 		WDT_Reset();
 	}
 }
@@ -188,6 +188,8 @@ int main( void )
 	initLCDDriver();
 
 	WDT_EnableAndSetTimeout(WDT_PER_128CLK_gc);	//set watchdog timer for 0.125s period
+
+	menuInit();
 
 	printf("\nReset\n");
 
