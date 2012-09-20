@@ -38,55 +38,90 @@ static void getProportionalMoveDirection(int16_t *speed, int16_t *dir)
 	*speed = getWirelessPropJoySpeed();
 	*dir = getWirelessPropJoyDirection();
 
+	// fwd/rev offset
 	if (*speed) {
-		// fwd/rev offset, throw
-		*speed = (*speed - 116) * menuGetThrow();
+		*speed -= 116;
 	}
 
+	// right/left offset
 	if (*dir) {
-		// right/left offset, throw
-		*dir = (*dir - 118) * menuGetThrow() * 0.75;
+		*dir -= 118;
 	}
 
-	// center dead band
-	if (*speed > 0) {
-		*speed -= menuGetCenterDeadBand();
-		if (*speed < 0) {
+	// Proportional joystick as switch joystick
+	if (menuGetPropAsSwitch())
+	{
+		uint8_t threshold = 50;
+		if (*speed > threshold) {
+			*speed = menuGetTopFwdSpeed();
+		} else if (*speed < -threshold) {
+			*speed = -menuGetTopRevSpeed();
+		} else {
 			*speed = 0;
 		}
+
+		if (*dir > threshold) {
+			*dir = menuGetTopTurnSpeed();
+		} else if (*dir < -threshold) {
+			*dir = -menuGetTopTurnSpeed();
+		} else {
+			*dir = 0;
+		}
 	}
-	if (*speed < 0) {
-		*speed += menuGetCenterDeadBand();
+	else
+	{
+		// center dead band
+		// Todo: come up with a better algorithm
 		if (*speed > 0) {
-			*speed = 0;
+			*speed -= menuGetCenterDeadBand();
+			if (*speed < 0) {
+				*speed = 0;
+			}
 		}
-	}
-	if (*dir > 0) {
-		*dir -= menuGetCenterDeadBand();
-		if (*dir < 0) {
-			*dir = 0;
+		if (*speed < 0) {
+			*speed += menuGetCenterDeadBand();
+			if (*speed > 0) {
+				*speed = 0;
+			}
 		}
-	}
-	if (*dir < 0) {
-		*dir += menuGetCenterDeadBand();
 		if (*dir > 0) {
-			*dir = 0;
+			*dir -= menuGetCenterDeadBand();
+			if (*dir < 0) {
+				*dir = 0;
+			}
 		}
-	}
+		if (*dir < 0) {
+			*dir += menuGetCenterDeadBand();
+			if (*dir > 0) {
+				*dir = 0;
+			}
+		}
 
-	if (*speed > 127) {
-		// max forward speed
-		*speed = 127;
-	} else if (*speed < -127) {
-		// max reverse speed
-		*speed = -127;
-	}
+		// fwd/rev throw
+		if (*speed > 0) {
+			*speed *= menuGetFwdThrow();
+		}
+		if (*speed < 0) {
+			*speed *= menuGetRevThrow();
+		}
+		// turn throw
+		*dir *= menuGetTurnThrow();
 
-	// max turn speed
-	if (*dir > 127) {
-		*dir = 127;
-	} else if (*dir < -127) {
-		*dir = -127;
+		// Top speeds
+		if (*speed > menuGetTopFwdSpeed()) {
+			// max forward speed
+			*speed = menuGetTopFwdSpeed();
+		} else if (*speed < -menuGetTopRevSpeed()) {
+			// max reverse speed
+			*speed = -menuGetTopRevSpeed();
+		}
+
+		// max turn speed
+		if (*dir > menuGetTopTurnSpeed()) {
+			*dir = menuGetTopTurnSpeed();
+		} else if (*dir < -menuGetTopTurnSpeed()) {
+			*dir = -menuGetTopTurnSpeed();
+		}
 	}
 }
 

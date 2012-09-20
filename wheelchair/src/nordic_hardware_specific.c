@@ -18,8 +18,8 @@
 //#define NORDIC_OPTION NORDIC_MODULE
 
 //watchdog timer 1tick = 32us
-//46900 ticks = 1.5s
-#define WATCHDOG_PERIOD	46900
+// 3125 ticks = 0.1s
+#define WATCHDOG_PERIOD 3125
 
 SPI_Master_t nordic_spi;
 

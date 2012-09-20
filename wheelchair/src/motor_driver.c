@@ -23,6 +23,7 @@
 #include <avr/io.h>
 #include "../atmel/usart_driver.h"
 #include "motor_driver.h"
+#include "menu.h"
 
 USART_data_t USARTD1_data;
 
@@ -59,7 +60,7 @@ void initMotorDriver(void) {
 
 	// Enable ramping 4.2s
 	//sendMotorCommand(MOTOR_CMD_RAMPING, 14);
-	sendMotorCommand(MOTOR_CMD_RAMPING, 20);
+	sendMotorCommand(MOTOR_CMD_RAMPING, menuGetAcceleration());
 }
 
 void motorEStop(void)
