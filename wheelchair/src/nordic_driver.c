@@ -27,24 +27,20 @@ static uint8_t INSTRUCTOR_ESTOP;
 
 static void nordic_CopyPacket(NORDIC_PACKET* dest, volatile NORDIC_PACKET* src)
 {
-	AVR_ENTER_CRITICAL_REGION();
 	dest->data.array[0] = src->data.array[0];
 	dest->data.array[1] = src->data.array[1];
 	dest->data.array[2] = src->data.array[2];
 	dest->data.array[3] = src->data.array[3];
 	dest->rxpipe = src->rxpipe;
-	AVR_LEAVE_CRITICAL_REGION();
 }
 
 static void nordic_ClearPacket(volatile NORDIC_PACKET* packet)
 {
-	AVR_ENTER_CRITICAL_REGION();
 	packet->data.array[0] = 0;
 	packet->data.array[1] = 0;
 	packet->data.array[2] = 0;
 	packet->data.array[3] = 0;
 	packet->rxpipe = 0;
-	AVR_LEAVE_CRITICAL_REGION();
 }
 
 //make sure txdata and rxdata are at least of length dataSize
@@ -283,6 +279,7 @@ uint8_t nordic_GetStatus(void)
 
 //stores received data in *data, size is the most data it will return
 //the return value is the number of data bytes stored in data
+/*
 uint8_t nordic_GetNewPacket(NORDIC_PACKET* packet)
 {
 	uint8_t packetFound = 0;
@@ -308,6 +305,7 @@ void nordic_GetLastPacket(NORDIC_PACKET* packet)
 		AVR_LEAVE_CRITICAL_REGION();
 	}
 }
+*/
 
 //clears the last rx packet, called if packet watchdog times out
 void ClearLastPacket(void)
@@ -389,7 +387,7 @@ uint8_t nordic_IRQ(void)
 	previousMode = standbyMode();
 	nordic_SendCommand(NOP_nCmd, NULL, NULL, 0, &status);
 
-	if(status & 0x40) { // Data Ready RX FIFO
+	if (status & 0x40) { // Data Ready RX FIFO
 		RX_DATA_READY_FLAG = 1;
 		//get latest packet
 		nordic_SendCommand(R_RX_PL_WID_nCmd, NULL, &size, 1, NULL);	//get payload size
@@ -410,11 +408,11 @@ uint8_t nordic_IRQ(void)
 		//update remote variables
 		SetInstructorRemote();
 	}
-	if(status & 0x20) { // Data Sent TX FIFO
+	if (status & 0x20) { // Data Sent TX FIFO
 		TX_DATA_SENT_FLAG = 1;
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
 	}
-	if(status & 0x10) { // Maximum number of TX retransmits
+	if (status & 0x10) { // Maximum number of TX retransmits
 		MAX_RETRANSMITS_READY_FLAG = 1;
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
 	}

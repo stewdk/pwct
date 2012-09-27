@@ -79,6 +79,7 @@ void getStateStr(states state, char *str)
 	}
 }
 
+/*
 static void byte_to_binary(char * b, int x)
 {
 	b[0] = '\0';
@@ -116,6 +117,7 @@ void testNordicWireless(void)
 		}
 	}
 }
+*/
 
 /*
 // test inputs

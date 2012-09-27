@@ -14,7 +14,7 @@
 void testJoystickDriveMotors(void);
 void testPropJoy(void);
 void getStateStr(states state, char *str);
-void testNordicWireless(void);
+//void testNordicWireless(void);
 void testInputs(void);
 void testMotorDriver(void);
 

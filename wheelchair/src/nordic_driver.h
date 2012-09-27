@@ -86,8 +86,8 @@ typedef struct {
 
 int8_t nordic_Initialize(uint8_t receiver);
 uint8_t nordic_GetStatus(void);
-uint8_t nordic_GetNewPacket(NORDIC_PACKET* packet);
-void nordic_GetLastPacket(NORDIC_PACKET* packet);
+//uint8_t nordic_GetNewPacket(NORDIC_PACKET* packet);
+//void nordic_GetLastPacket(NORDIC_PACKET* packet);
 void ClearLastPacket(void);
 void SetInstructorRemote(void);
 void nordic_TransmitData(NORDIC_PACKET * packet);

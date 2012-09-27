@@ -114,12 +114,12 @@ ISR(PORTH_INT0_vect)
 
 	//check flags variable for RX flag
 	if (flags & 0x40) {
-		//reset packet watchdog timer
+		//reset packet receive time-out
 		TCF0.CNT = 0;
 	}
 }
 
-ISR(TCF0_OVF_vect)	//packet watchdog overflow
+ISR(TCF0_OVF_vect)	//packet receive time-out
 {
 	ClearLastPacket();
 	SetInstructorRemote();
