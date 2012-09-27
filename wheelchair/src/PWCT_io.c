@@ -134,6 +134,8 @@ static void setupEstopTimer()
 
 	//start clocks
 	TC1_ConfigClockSource( &TCF1, TC_CLKSEL_DIV256_gc );
+
+	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 }
 
 static void setupDebouncedInputs()
@@ -179,6 +181,8 @@ static void setupDebounceTimer()
 	TCC1.CTRLB = TC_WGMODE_FRQ_gc;
 	TCC1.INTCTRLB = TC_CCAINTLVL_LO_gc;
 	TCC1.CCA = 40000; // Goal: interrupt every 5 milliseconds
+
+	PMIC.CTRL |= PMIC_LOLVLEN_bm;
 }
 
 void initPWCTio(void)
@@ -214,7 +218,7 @@ void initPWCTio(void)
 	//get default values
 	SampleInputs();
 
-	PMIC_EnableMediumLevel();
+	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 }
 
 void SampleInputs(void)

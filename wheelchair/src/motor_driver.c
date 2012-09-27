@@ -48,7 +48,7 @@ void initMotorDriver(void) {
 	USART_Rx_Disable(USARTD1_data.usart);
 	USART_Tx_Enable(USARTD1_data.usart);
 
-	PMIC.CTRL |= PMIC_HILVLEX_bm;
+	PMIC.CTRL |= PMIC_HILVLEN_bm;
 
 	// Let's hope that global interrupts are already enabled...
 
@@ -58,8 +58,7 @@ void initMotorDriver(void) {
 	// Enable serial timeout 500 ms
 	sendMotorCommand(MOTOR_CMD_SERIAL_TIMEOUT, 5);
 
-	// Enable ramping 4.2s
-	//sendMotorCommand(MOTOR_CMD_RAMPING, 14);
+	// Enable ramping
 	sendMotorCommand(MOTOR_CMD_RAMPING, menuGetAcceleration());
 }
 

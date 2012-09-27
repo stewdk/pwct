@@ -50,7 +50,7 @@ static inline void hardwareSetup()
 	PORTH.INT0MASK = PIN2_bm;
 
 	// Enable med level interrupt
-	PMIC.CTRL |= PMIC_MEDLVLEX_bm;
+	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 
 	// Packet time-out counter
 	TCF0.CTRLA = TC_CLKSEL_OFF_gc;
@@ -123,7 +123,7 @@ static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, 
 	*status = SPI_TransceiveByte(cmd);
 
 	//send/receive LSByte first
-	if(dataSize != 0) {
+	if (dataSize != 0) {
 		i = dataSize;
 		do {
 			i--;

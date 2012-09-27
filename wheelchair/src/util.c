@@ -74,8 +74,7 @@ void dbgUSARTinit(void)
 	USART_Tx_Enable(USARTD0_data.usart);
 
 	/* Enable PMIC interrupt level low. */
-	PMIC.CTRL |= PMIC_LOLVLEX_bm;
-
+	PMIC.CTRL |= PMIC_LOLVLEN_bm;
 }
 
 void dbgPutChar(char c)

@@ -12,6 +12,7 @@
 #include <util/delay.h>
 #include <stdio.h>
 #include <string.h>
+#include "../atmel/avr_compiler.h"
 #include "lcd_driver.h"
 
 // 0.25 µs per tick
@@ -33,18 +34,21 @@ static inline uint8_t lcdBusy(void)
 static inline void setTimerPeriod(uint16_t period)
 {
 	TCE1.CCA = period;
-	TCE1.CTRLFSET = TC_CMD_RESTART_gc;
+	TCE1.CTRLFSET = TC_CMD_RESTART_gc; // The Counter, direction, and all compare outputs are set to zero
+	TCE1.INTFLAGS = TC0_CCAIF_bm; // Clear compare interrupt
 }
 
 static inline void stopTimer()
 {
 	TCE1.CTRLA = TC_CLKSEL_OFF_gc;
-	TCE1.CNT = 0;
+	TCE1.CTRLFSET = TC_CMD_RESTART_gc; // The Counter, direction, and all compare outputs are set to zero
+	TCE1.INTFLAGS = TC0_CCAIF_bm; // Clear compare interrupt
 }
 
 static inline void startTimer()
 {
-	TCE1.CTRLFSET = TC_CMD_RESTART_gc;
+	TCE1.CTRLFSET = TC_CMD_RESTART_gc; // The Counter, direction, and all compare outputs are set to zero
+	TCE1.INTFLAGS = TC0_CCAIF_bm; // Clear compare interrupt
 	TCE1.CTRLA = LCD_TIMER_CLKSEL;
 }
 
@@ -207,13 +211,10 @@ void initLCDDriver(void)
 
 ISR(TCE1_CCA_vect)
 {
+	AVR_ENTER_CRITICAL_REGION();
 	switch (gLCDState)
 	{
 	default:
-		while (1)
-		{
-			// Error - wait for watchdog reset
-		}
 		break;
 	case 1: // Clear E - ADDRLINEx[7:4]
 		lcdEClr();
@@ -277,4 +278,5 @@ ISR(TCE1_CCA_vect)
 		gLCDState = 0;
 		break;
 	}
+	AVR_LEAVE_CRITICAL_REGION();
 }

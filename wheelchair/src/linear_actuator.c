@@ -63,8 +63,8 @@ void initLinearActuators(void)
 	//set overflow interrupt
 	TC0_SetOverflowIntLevel( &TCE0, TC_OVFINTLVL_MED_gc);
 
-	// interrupt level
-	PMIC_EnableHighLevel();
+	// enable interrupt level
+	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 
 	/************************** ADC CONFIG ******************/
 	ADC_CalibrationValues_Load(&ADCB);
@@ -100,7 +100,7 @@ void initLinearActuators(void)
 //	ADC_Ch_Interrupts_Config(&ADCB.CH3, ADC_CH_INTMODE_COMPLETE_gc, ADC_CH_INTLVL_MED_gc);
 
 	// Enable PMIC interrupt level
-	PMIC_EnableMediumLevel();
+	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 
 	// Setup sweep of all 4 virtual channels.
 	ADC_SweepChannels_Config(&ADCB, ADC_SWEEP_0123_gc);
