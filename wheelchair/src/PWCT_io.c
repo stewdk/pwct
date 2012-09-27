@@ -311,17 +311,17 @@ uint8_t getSwitchMoveDirection(void)
 	}
 
 	//Instructor forward and reverse
-	if(getInstructorForward() && !getInstructorReverse()) {	//if instructor forward selected and not instructor reverse selected
+	if(nordic_getInstructorForward() && !nordic_getInstructorReverse()) {	//if instructor forward selected and not instructor reverse selected
 		moveDir |= 0x08;
 	}
-	else if(getInstructorReverse() && !getInstructorForward()) {	//if instructor reverse selected and not instructor forward selected
+	else if(nordic_getInstructorReverse() && !nordic_getInstructorForward()) {	//if instructor reverse selected and not instructor forward selected
 		moveDir |= 0x04;
 	}
 	//Instructor left and right
-	if(getInstructorLeft() && !getInstructorRight()) {	//if instructor forward selected and not instructor reverse selected
+	if(nordic_getInstructorLeft() && !nordic_getInstructorRight()) {	//if instructor forward selected and not instructor reverse selected
 		moveDir |= 0x02;
 	}
-	else if(getInstructorRight() && !getInstructorLeft()) {	//if instructor reverse selected and not instructor forward selected
+	else if(nordic_getInstructorRight() && !nordic_getInstructorLeft()) {	//if instructor reverse selected and not instructor forward selected
 		moveDir |= 0x01;
 	}
 

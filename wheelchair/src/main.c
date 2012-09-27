@@ -35,8 +35,8 @@
 
 static void getProportionalMoveDirection(int16_t *speed, int16_t *dir)
 {
-	*speed = getWirelessPropJoySpeed();
-	*dir = getWirelessPropJoyDirection();
+	*speed = nordic_getWirelessPropJoySpeed();
+	*dir = nordic_getWirelessPropJoyDirection();
 
 	// fwd/rev offset
 	if (*speed) {
@@ -146,7 +146,7 @@ static void eStop(void)
 	motorEStop();
 	while (1)
 	{
-		lcdText("E-stop", "", 0);
+		lcdText("E-stop", "     " __DATE__, 0);
 		WDT_Reset();
 	}
 }
@@ -183,7 +183,7 @@ int main( void )
 
 	initPWCTio();
 
-	nordic_Initialize(1);
+	nordic_Initialize();
 
 	initLCDDriver();
 
@@ -203,8 +203,6 @@ int main( void )
 
 	//testMotorDriver();
 
-	lcdText("PWCT  Build Date", "     " __DATE__, 0);
-
 	//Run Operational State Machine
 	while(1) {
 		WDT_Reset();
@@ -218,7 +216,7 @@ int main( void )
 
 		actuatorSwitchState = ActuatorSwitchPressed();
 
-		if (PanelEStopPressed() || getInstructorEStop()) {
+		if (PanelEStopPressed() || nordic_getInstructorEStop()) {
 			eStop();
 		} else if (!LimitSwitchPressed() || ((state == IDLE || state == LOAD) && actuatorSwitchState)) {
 			state = LOAD;

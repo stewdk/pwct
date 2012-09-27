@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "test.h"
-#include "nordic_driver.h"
+//#include "nordic_driver.h"
 #include "../atmel/wdt_driver.h"
 #include "PWCT_io.h"
 #include "linear_actuator.h"
