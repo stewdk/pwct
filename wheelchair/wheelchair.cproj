@@ -106,6 +106,9 @@
     <Compile Include="atmel\wdt_driver.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\joystick_algorithm.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\lcd_driver.c">
       <SubType>compile</SubType>
     </Compile>

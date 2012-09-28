@@ -45,5 +45,6 @@ void initMotorDriver(void);
 void motorEStop(void);
 void resetMotorEStop(void);
 void sendMotorCommand(uint8_t command, uint8_t data);
+void setMotors(int16_t speed, int16_t dir);
 
 #endif /* MOTOR_DRIVER_H_ */

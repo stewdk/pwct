@@ -177,7 +177,6 @@ static void setupDebounceTimer()
 {
 	// TCC1 is the timer used for debouncing
 	TCC1.CTRLA = TC_CLKSEL_DIV4_gc;
-	//TCC1.CTRLA = TC_CLKSEL_DIV64_gc;
 	TCC1.CTRLB = TC_WGMODE_FRQ_gc;
 	TCC1.INTCTRLB = TC_CCAINTLVL_LO_gc;
 	TCC1.CCA = 40000; // Goal: interrupt every 5 milliseconds

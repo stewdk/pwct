@@ -1,4 +1,4 @@
-/* This file has been prepared for Doxygen automatic documentation generation.*/
+/* This file has been prepared for Doxygen automatic documentation generation... kind of.*/
 /*! \file *********************************************************************
  *
  * \brief  PWCT main function source file
@@ -9,7 +9,7 @@
  *      This code is written for an XMEGA 64 A1 device
  *
  * \author
- *      Jeff VanOss, Anderson Peck, Paul Shields
+ *      Stew Hildebrand, Jeff VanOss, Anderson Peck, Paul Shields
  *
  * $Revision: 1 $
  * $Date: 03-28-2011$  \n
@@ -31,115 +31,8 @@
 #include "motor_driver.h"
 #include "lcd_driver.h"
 #include "menu.h"
+#include "joystick_algorithm.h"
 //#include "test.h"
-
-static void getProportionalMoveDirection(int16_t *speed, int16_t *dir)
-{
-	*speed = nordic_getWirelessPropJoySpeed();
-	*dir = nordic_getWirelessPropJoyDirection();
-
-	// fwd/rev offset
-	if (*speed) {
-		*speed -= 116;
-	}
-
-	// right/left offset
-	if (*dir) {
-		*dir -= 118;
-	}
-
-	// Proportional joystick as switch joystick
-	if (menuGetPropAsSwitch())
-	{
-		uint8_t threshold = 50;
-		if (*speed > threshold) {
-			*speed = menuGetTopFwdSpeed();
-		} else if (*speed < -threshold) {
-			*speed = -menuGetTopRevSpeed();
-		} else {
-			*speed = 0;
-		}
-
-		if (*dir > threshold) {
-			*dir = menuGetTopTurnSpeed();
-		} else if (*dir < -threshold) {
-			*dir = -menuGetTopTurnSpeed();
-		} else {
-			*dir = 0;
-		}
-	}
-	else
-	{
-		// center dead band
-		// Todo: come up with a better algorithm
-		if (*speed > 0) {
-			*speed -= menuGetCenterDeadBand();
-			if (*speed < 0) {
-				*speed = 0;
-			}
-		}
-		if (*speed < 0) {
-			*speed += menuGetCenterDeadBand();
-			if (*speed > 0) {
-				*speed = 0;
-			}
-		}
-		if (*dir > 0) {
-			*dir -= menuGetCenterDeadBand();
-			if (*dir < 0) {
-				*dir = 0;
-			}
-		}
-		if (*dir < 0) {
-			*dir += menuGetCenterDeadBand();
-			if (*dir > 0) {
-				*dir = 0;
-			}
-		}
-
-		// fwd/rev throw
-		if (*speed > 0) {
-			*speed *= menuGetFwdThrow();
-		}
-		if (*speed < 0) {
-			*speed *= menuGetRevThrow();
-		}
-		// turn throw
-		*dir *= menuGetTurnThrow();
-
-		// Top speeds
-		if (*speed > menuGetTopFwdSpeed()) {
-			// max forward speed
-			*speed = menuGetTopFwdSpeed();
-		} else if (*speed < -menuGetTopRevSpeed()) {
-			// max reverse speed
-			*speed = -menuGetTopRevSpeed();
-		}
-
-		// max turn speed
-		if (*dir > menuGetTopTurnSpeed()) {
-			*dir = menuGetTopTurnSpeed();
-		} else if (*dir < -menuGetTopTurnSpeed()) {
-			*dir = -menuGetTopTurnSpeed();
-		}
-	}
-}
-
-static void setMotors(int16_t speed, int16_t dir)
-{
-	if (speed >= 0) {
-		sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MIXED_MODE, speed);
-	} else {
-		speed = -speed;
-		sendMotorCommand(MOTOR_CMD_DRIVE_BACKWARDS_MIXED_MODE, speed);
-	}
-	if (dir >= 0) {
-		sendMotorCommand(MOTOR_CMD_TURN_RIGHT_MIXED_MODE, dir);
-	} else {
-		dir = -dir;
-		sendMotorCommand(MOTOR_CMD_TURN_LEFT_MIXED_MODE, dir);
-	}
-}
 
 static void eStop(void)
 {
@@ -174,6 +67,7 @@ int main( void )
 
 	// Enable global interrupts.
 	sei();
+	joystickAlgorithmInit();
 	initMotorDriver();
 
 	dbgLEDinit();
@@ -188,8 +82,6 @@ int main( void )
 	initLCDDriver();
 
 	WDT_EnableAndSetTimeout(WDT_PER_128CLK_gc);	//set watchdog timer for 0.125s period
-
-	menuInit();
 
 	printf("\nReset\n");
 
@@ -216,7 +108,8 @@ int main( void )
 
 		actuatorSwitchState = ActuatorSwitchPressed();
 
-		if (PanelEStopPressed() || nordic_getInstructorEStop()) {
+		// TODO
+		if (/*PanelEStopPressed() || */nordic_getInstructorEStop()) {
 			eStop();
 		} else if (!LimitSwitchPressed() || ((state == IDLE || state == LOAD) && actuatorSwitchState)) {
 			state = LOAD;

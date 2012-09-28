@@ -57,9 +57,6 @@ void initMotorDriver(void) {
 
 	// Enable serial timeout 500 ms
 	sendMotorCommand(MOTOR_CMD_SERIAL_TIMEOUT, 5);
-
-	// Enable ramping
-	sendMotorCommand(MOTOR_CMD_RAMPING, menuGetAcceleration());
 }
 
 void motorEStop(void)
@@ -93,6 +90,22 @@ void sendMotorCommand(uint8_t command, uint8_t data)
 	packet.parts.data = data;
 	packet.parts.checksum = (packet.parts.address + packet.parts.command + packet.parts.data) & 0x7F;
 	sendMotorPacket(&packet);
+}
+
+void setMotors(int16_t speed, int16_t dir)
+{
+	if (speed >= 0) {
+		sendMotorCommand(MOTOR_CMD_DRIVE_FORWARD_MIXED_MODE, speed);
+	} else {
+		speed = -speed;
+		sendMotorCommand(MOTOR_CMD_DRIVE_BACKWARDS_MIXED_MODE, speed);
+	}
+	if (dir >= 0) {
+		sendMotorCommand(MOTOR_CMD_TURN_RIGHT_MIXED_MODE, dir);
+	} else {
+		dir = -dir;
+		sendMotorCommand(MOTOR_CMD_TURN_LEFT_MIXED_MODE, dir);
+	}
 }
 
 ISR(USARTD1_DRE_vect)

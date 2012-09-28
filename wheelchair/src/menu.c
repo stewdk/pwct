@@ -19,35 +19,82 @@
 #define MENU_OPTION_TOP_FWD_SPEED 3
 #define MENU_OPTION_TOP_REV_SPEED 4
 #define MENU_OPTION_TOP_TURN_SPEED 5
-#define MENU_OPTION_CTR_DEAD_BAND 6
-#define MENU_OPTION_ACCELERATION 7
-#define MENU_OPTION_PROP_AS_SWITCH 8
+#define MENU_OPTION_ACCELERATION 6
+#define MENU_OPTION_DECELERATION 7
+#define MENU_OPTION_CTR_DEAD_BAND 8
+#define MENU_OPTION_PROP_AS_SWITCH 9
+#define MENU_OPTION_INVERT 10
 // We must know how many menu options there are
-#define LAST_MENU_OPTION MENU_OPTION_PROP_AS_SWITCH
+#define LAST_MENU_OPTION MENU_OPTION_INVERT
 
 // EEPROM variables and initial values
 // Note: the initial values are only updated when programming the EEPROM memory (wheelchair.eep)
 uint8_t EEMEM eepromMenuState = 0;
 float EEMEM eepromFwdThrow = 1.0;
 float EEMEM eepromRevThrow = 0.8;
-float EEMEM eepromTurnThrow = 0.8;
+float EEMEM eepromTurnThrow = 0.6;
 uint8_t EEMEM eepromTopFwdSpeed = 50;
 uint8_t EEMEM eepromTopRevSpeed = 35;
 uint8_t EEMEM eepromTopTurnSpeed = 20;
+uint8_t EEMEM eepromAcceleration = 14;
+uint8_t EEMEM eepromDeceleration = 10;
 uint8_t EEMEM eepromCenterDeadBand = 3;
-uint8_t EEMEM eepromAcceleration = 20;
 uint8_t EEMEM eepromPropAsSwitch = 0;
+uint8_t EEMEM eepromInvert = 0;
 
-uint8_t EEMEM eepromResetCount = 0;
-
-uint8_t menuGetResetCount()
+float menuGetFwdThrow(void)
 {
-	return eeprom_read_byte(&eepromResetCount);
+	return eeprom_read_float(&eepromFwdThrow);
 }
 
-void menuInit()
+float menuGetRevThrow(void)
 {
-	eeprom_update_byte(&eepromResetCount, menuGetResetCount() + 1);
+	return eeprom_read_float(&eepromRevThrow);
+}
+
+float menuGetTurnThrow(void)
+{
+	return eeprom_read_float(&eepromTurnThrow);
+}
+
+uint8_t menuGetTopFwdSpeed(void)
+{
+	return eeprom_read_byte(&eepromTopFwdSpeed);
+}
+
+uint8_t menuGetTopRevSpeed(void)
+{
+	return eeprom_read_byte(&eepromTopRevSpeed);
+}
+
+uint8_t menuGetTopTurnSpeed(void)
+{
+	return eeprom_read_byte(&eepromTopTurnSpeed);
+}
+
+uint8_t menuGetAcceleration(void)
+{
+	return eeprom_read_byte(&eepromAcceleration);
+}
+
+uint8_t menuGetDeceleration(void)
+{
+	return eeprom_read_byte(&eepromDeceleration);
+}
+
+uint8_t menuGetCenterDeadBand(void)
+{
+	return eeprom_read_byte(&eepromCenterDeadBand);
+}
+
+uint8_t menuGetPropAsSwitch(void)
+{
+	return eeprom_read_byte(&eepromPropAsSwitch);
+}
+
+uint8_t menuGetInvert(void)
+{
+	return eeprom_read_byte(&eepromInvert);
 }
 
 void menuUpdate(int16_t speed, int16_t dir)
@@ -145,6 +192,28 @@ void menuUpdate(int16_t speed, int16_t dir)
 		}
 		sprintf(lcdLine1, "TopTurnSpd=%d", menuGetTopTurnSpeed());
 		break;
+	case MENU_OPTION_ACCELERATION:
+		if (up) {
+			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() + 2);
+			printf("EEPROM written\n");
+		}
+		if (down) {
+			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() - 2);
+			printf("EEPROM written\n");
+		}
+		sprintf(lcdLine1, "Acceleration=%d", menuGetAcceleration());
+		break;
+	case MENU_OPTION_DECELERATION:
+		if (up) {
+			eeprom_update_byte(&eepromDeceleration, menuGetDeceleration() + 2);
+			printf("EEPROM written\n");
+		}
+		if (down) {
+			eeprom_update_byte(&eepromDeceleration, menuGetDeceleration() - 2);
+			printf("EEPROM written\n");
+		}
+		sprintf(lcdLine1, "Deceleration=%d", menuGetDeceleration());
+		break;
 	case MENU_OPTION_CTR_DEAD_BAND:
 		if (up && menuGetCenterDeadBand() < 25) {
 			eeprom_update_byte(&eepromCenterDeadBand, menuGetCenterDeadBand() + 1);
@@ -156,20 +225,6 @@ void menuUpdate(int16_t speed, int16_t dir)
 		}
 		sprintf(lcdLine1, "Ctr DeadBand=%d", menuGetCenterDeadBand());
 		break;
-	case MENU_OPTION_ACCELERATION:
-		if (up) {
-			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() + 1);
-			printf("EEPROM written\n");
-		}
-		if (down) {
-			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() - 1);
-			printf("EEPROM written\n");
-		}
-		if (up || down) {
-			sendMotorCommand(MOTOR_CMD_RAMPING, menuGetAcceleration());
-		}
-		sprintf(lcdLine1, "Acceleration=%d", menuGetAcceleration());
-		break;
 	case MENU_OPTION_PROP_AS_SWITCH:
 		if (up || down) {
 			if (menuGetPropAsSwitch()) {
@@ -179,58 +234,24 @@ void menuUpdate(int16_t speed, int16_t dir)
 			}
 			printf("EEPROM written\n");
 		}
-		sprintf(lcdLine1, "PropAsSwitch=%d", menuGetPropAsSwitch());
+		sprintf(lcdLine1, "PropAsSwitch=%s", menuGetPropAsSwitch() ? "On" : "Off");
+		break;
+	case MENU_OPTION_INVERT:
+		if (up || down) {
+			if (menuGetInvert()) {
+				eeprom_update_byte(&eepromInvert, 0);
+			} else {
+				eeprom_update_byte(&eepromInvert, 1);
+			}
+			printf("EEPROM written\n");
+		}
+		sprintf(lcdLine1, "Invert=%s", menuGetInvert() ? "On" : "Off");
 		break;
 	default:
 		lcdLine1[0] = '\0';
 		break;
 	}
-	sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, menuGetResetCount());
+	sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
 
 	lcdText(lcdLine1, lcdLine2, 0);
-}
-
-float menuGetFwdThrow(void)
-{
-	return eeprom_read_float(&eepromFwdThrow);
-}
-
-float menuGetRevThrow(void)
-{
-	return eeprom_read_float(&eepromRevThrow);
-}
-
-float menuGetTurnThrow(void)
-{
-	return eeprom_read_float(&eepromTurnThrow);
-}
-
-uint8_t menuGetTopFwdSpeed(void)
-{
-	return eeprom_read_byte(&eepromTopFwdSpeed);
-}
-
-uint8_t menuGetTopRevSpeed(void)
-{
-	return eeprom_read_byte(&eepromTopRevSpeed);
-}
-
-uint8_t menuGetTopTurnSpeed(void)
-{
-	return eeprom_read_byte(&eepromTopTurnSpeed);
-}
-
-uint8_t menuGetCenterDeadBand(void)
-{
-	return eeprom_read_byte(&eepromCenterDeadBand);
-}
-
-uint8_t menuGetAcceleration(void)
-{
-	return eeprom_read_byte(&eepromAcceleration);
-}
-
-uint8_t menuGetPropAsSwitch(void)
-{
-	return eeprom_read_byte(&eepromPropAsSwitch);
 }
