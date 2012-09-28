@@ -19,11 +19,12 @@
 #define MENU_OPTION_TOP_FWD_SPEED 3
 #define MENU_OPTION_TOP_REV_SPEED 4
 #define MENU_OPTION_TOP_TURN_SPEED 5
-#define MENU_OPTION_ACCELERATION 6
-#define MENU_OPTION_DECELERATION 7
-#define MENU_OPTION_CTR_DEAD_BAND 8
-#define MENU_OPTION_PROP_AS_SWITCH 9
-#define MENU_OPTION_INVERT 10
+#define MENU_OPTION_SENSITIVITY 6
+#define MENU_OPTION_ACCELERATION 7
+#define MENU_OPTION_DECELERATION 8
+#define MENU_OPTION_CTR_DEAD_BAND 9
+#define MENU_OPTION_PROP_AS_SWITCH 10
+#define MENU_OPTION_INVERT 11
 // We must know how many menu options there are
 #define LAST_MENU_OPTION MENU_OPTION_INVERT
 
@@ -36,6 +37,7 @@ float EEMEM eepromTurnThrow = 0.6;
 uint8_t EEMEM eepromTopFwdSpeed = 50;
 uint8_t EEMEM eepromTopRevSpeed = 35;
 uint8_t EEMEM eepromTopTurnSpeed = 20;
+float EEMEM eepromSensitivity = 0.004;
 uint8_t EEMEM eepromAcceleration = 14;
 uint8_t EEMEM eepromDeceleration = 10;
 uint8_t EEMEM eepromCenterDeadBand = 3;
@@ -70,6 +72,11 @@ uint8_t menuGetTopRevSpeed(void)
 uint8_t menuGetTopTurnSpeed(void)
 {
 	return eeprom_read_byte(&eepromTopTurnSpeed);
+}
+
+float menuGetSensitivity(void)
+{
+	return eeprom_read_float(&eepromSensitivity);
 }
 
 uint8_t menuGetAcceleration(void)
@@ -191,6 +198,17 @@ void menuUpdate(int16_t speed, int16_t dir)
 			printf("EEPROM written\n");
 		}
 		sprintf(lcdLine1, "TopTurnSpd=%d", menuGetTopTurnSpeed());
+		break;
+	case MENU_OPTION_SENSITIVITY:
+		if (up && menuGetSensitivity() < 0.5) {
+			eeprom_update_float(&eepromSensitivity, menuGetSensitivity() * 2);
+			printf("EEPROM written\n");
+		}
+		if (down && menuGetSensitivity() > 0.0001) {
+			eeprom_update_float(&eepromSensitivity, menuGetSensitivity() / 2);
+			printf("EEPROM written\n");
+		}
+		sprintf(lcdLine1, "Sens.=%1.4f", (double)menuGetSensitivity());
 		break;
 	case MENU_OPTION_ACCELERATION:
 		if (up) {

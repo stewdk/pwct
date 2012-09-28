@@ -39,7 +39,7 @@ static void eStop(void)
 	motorEStop();
 	while (1)
 	{
-		lcdText("E-stop", "     " __DATE__, 0);
+		lcdText("E-stop", "Ver. " __DATE__, 0);
 		WDT_Reset();
 	}
 }
@@ -108,8 +108,7 @@ int main( void )
 
 		actuatorSwitchState = ActuatorSwitchPressed();
 
-		// TODO
-		if (/*PanelEStopPressed() || */nordic_getInstructorEStop()) {
+		if (PanelEStopPressed() || nordic_getInstructorEStop()) {
 			eStop();
 		} else if (!LimitSwitchPressed() || ((state == IDLE || state == LOAD) && actuatorSwitchState)) {
 			state = LOAD;

@@ -32,6 +32,23 @@ volatile int16_t gDirPreFilter = 0;
 volatile int16_t gSpeedPostFilter = 0;
 volatile int16_t gDirPostFilter = 0;
 
+static int16_t centerDeadBand(int16_t input, uint8_t deadBand)
+{
+	if (input > 0) {
+		input -= deadBand;
+		if (input < 0) {
+			input = 0;
+		}
+	}
+	if (input < 0) {
+		input += deadBand;
+		if (input > 0) {
+			input = 0;
+		}
+	}
+	return input;
+}
+
 void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 {
 	int16_t speed = nordic_getWirelessPropJoySpeed();
@@ -75,31 +92,8 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	else
 	{
 		// center dead band
-		// Todo: come up with a better algorithm... or not
-		if (speed > 0) {
-			speed -= menuGetCenterDeadBand();
-			if (speed < 0) {
-				speed = 0;
-			}
-		}
-		if (speed < 0) {
-			speed += menuGetCenterDeadBand();
-			if (speed > 0) {
-				speed = 0;
-			}
-		}
-		if (dir > 0) {
-			dir -= menuGetCenterDeadBand();
-			if (dir < 0) {
-				dir = 0;
-			}
-		}
-		if (dir < 0) {
-			dir += menuGetCenterDeadBand();
-			if (dir > 0) {
-				dir = 0;
-			}
-		}
+		speed = centerDeadBand(speed, menuGetCenterDeadBand());
+		dir = centerDeadBand(dir, menuGetCenterDeadBand());
 
 		// fwd/rev throw
 		if (speed > 0) {
@@ -133,9 +127,13 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	gSpeedPreFilter = speed;
 	gDirPreFilter = dir;
 
-	*returnSpeed = gSpeedPostFilter;
-	*returnDir = gDirPostFilter;
+	speed = gSpeedPostFilter;
+	dir = gDirPostFilter;
 	AVR_LEAVE_CRITICAL_REGION();
+
+	// One last post-filter operation
+	*returnSpeed = centerDeadBand(speed, 1);
+	*returnDir = centerDeadBand(dir, 1);
 }
 
 
@@ -149,8 +147,8 @@ ISR(TCD1_CCA_vect)
 	static uint8_t decelerationCount = 0;
 
 	// Low-pass filter (aka Tremor Dampening aka Tremor Suppression aka Sensitivity)
-	speedBetweenFilters = speedBetweenFilters + 0.001 * (gSpeedPreFilter - speedBetweenFilters);
-	dirBetweenFilters = dirBetweenFilters + 0.001 * (gDirPreFilter - dirBetweenFilters);
+	speedBetweenFilters = speedBetweenFilters + (double)menuGetSensitivity() * (gSpeedPreFilter - speedBetweenFilters);
+	dirBetweenFilters = dirBetweenFilters + (double)menuGetSensitivity() * (gDirPreFilter - dirBetweenFilters);
 
 	// Acceleration/deceleration: must wait X milliseconds before speed/dir is changed by 1
 	accelerationCount++;
