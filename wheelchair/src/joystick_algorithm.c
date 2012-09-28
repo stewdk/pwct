@@ -128,6 +128,7 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 		}
 	}
 
+	// We've applied the direct-mapped logic, now it's time to hand it off to the filters
 	AVR_ENTER_CRITICAL_REGION();
 	gSpeedPreFilter = speed;
 	gDirPreFilter = dir;
@@ -137,27 +138,37 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	AVR_LEAVE_CRITICAL_REGION();
 }
 
+
+// Filter topography and variable naming:
+// preFilter --> [low-pass] --> betweenFilters --> [accel/decel] --> postFilter
 ISR(TCD1_CCA_vect)
 {
-	// Acceleration/deceleration: must wait X milliseconds before speed/dir is changed by 1
+	static double speedBetweenFilters = 0;
+	static double dirBetweenFilters = 0;
 	static uint8_t accelerationCount = 0;
 	static uint8_t decelerationCount = 0;
+
+	// Low-pass filter (aka Tremor Dampening aka Tremor Suppression aka Sensitivity)
+	speedBetweenFilters = speedBetweenFilters + 0.001 * (gSpeedPreFilter - speedBetweenFilters);
+	dirBetweenFilters = dirBetweenFilters + 0.001 * (gDirPreFilter - dirBetweenFilters);
+
+	// Acceleration/deceleration: must wait X milliseconds before speed/dir is changed by 1
 	accelerationCount++;
 	decelerationCount++;
 	if (accelerationCount >= menuGetAcceleration())
 	{
 		accelerationCount = 0;
 
-		if (gSpeedPostFilter >= 0 && gSpeedPreFilter > gSpeedPostFilter) {
+		if (gSpeedPostFilter >= 0 && speedBetweenFilters > gSpeedPostFilter) {
 			gSpeedPostFilter++;
 		}
-		if (gSpeedPostFilter <= 0 && gSpeedPreFilter < gSpeedPostFilter) {
+		if (gSpeedPostFilter <= 0 && speedBetweenFilters < gSpeedPostFilter) {
 			gSpeedPostFilter--;
 		}
-		if (gDirPostFilter >= 0 && gDirPreFilter > gDirPostFilter) {
+		if (gDirPostFilter >= 0 && dirBetweenFilters > gDirPostFilter) {
 			gDirPostFilter++;
 		}
-		if (gDirPostFilter <= 0 && gDirPreFilter < gDirPostFilter) {
+		if (gDirPostFilter <= 0 && dirBetweenFilters < gDirPostFilter) {
 			gDirPostFilter--;
 		}
 	}
@@ -166,28 +177,28 @@ ISR(TCD1_CCA_vect)
 	{
 		decelerationCount = 0;
 
-		if (gSpeedPostFilter > 0 && gSpeedPreFilter < gSpeedPostFilter) {
+		if (gSpeedPostFilter > 0 && speedBetweenFilters < gSpeedPostFilter) {
 			gSpeedPostFilter--;
-			if (gSpeedPreFilter < 0) {
+			if (speedBetweenFilters < 0) {
 				gSpeedPostFilter--;
 			}
 		}
-		if (gSpeedPostFilter < 0 && gSpeedPreFilter > gSpeedPostFilter) {
+		if (gSpeedPostFilter < 0 && speedBetweenFilters > gSpeedPostFilter) {
 			gSpeedPostFilter++;
-			if (gSpeedPreFilter > 0) {
+			if (speedBetweenFilters > 0) {
 				gSpeedPostFilter++;
 			}
 		}
 
-		if (gDirPostFilter > 0 && gDirPreFilter < gDirPostFilter) {
+		if (gDirPostFilter > 0 && dirBetweenFilters < gDirPostFilter) {
 			gDirPostFilter--;
-			if (gDirPreFilter < 0) {
+			if (dirBetweenFilters < 0) {
 				gDirPostFilter--;
 			}
 		}
-		if (gDirPostFilter < 0 && gDirPreFilter > gDirPostFilter) {
+		if (gDirPostFilter < 0 && dirBetweenFilters > gDirPostFilter) {
 			gDirPostFilter++;
-			if (gDirPreFilter > 0) {
+			if (dirBetweenFilters > 0) {
 				gDirPostFilter++;
 			}
 		}
