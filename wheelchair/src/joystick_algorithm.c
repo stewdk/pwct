@@ -11,7 +11,20 @@
 #include "../atmel/avr_compiler.h"
 #include "nordic_driver.h"
 #include "menu.h"
-//#include "util.h"
+
+// Input to time-based filters (acceleration, tremor dampening)
+static volatile int16_t gSpeedPreFilter = 0;
+static volatile int16_t gDirPreFilter = 0;
+
+static volatile double gSpeedBetweenFilters = 0;
+static volatile double gDirBetweenFilters = 0;
+
+// Output from time-based filters
+static volatile int16_t gSpeedPostFilter = 0;
+static volatile int16_t gDirPostFilter = 0;
+
+static volatile uint8_t gIsOuterDeadBand = 0;
+static volatile uint8_t gOuterDeadBandTime = 0;
 
 void joystickAlgorithmInit()
 {
@@ -24,13 +37,34 @@ void joystickAlgorithmInit()
 	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 }
 
-// Input to time-based filters (acceleration, tremor dampening)
-volatile int16_t gSpeedPreFilter = 0;
-volatile int16_t gDirPreFilter = 0;
+static uint8_t isOuterDeadBand(int16_t speed, int16_t dir)
+{
+	if (speed < 0) {
+		speed = -speed;
+	}
+	if (dir < 0) {
+		dir = -dir;
+	}
+	if (menuGetOuterDeadBand() && speed + dir > 60) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
 
-// Output from time-based filters
-volatile int16_t gSpeedPostFilter = 0;
-volatile int16_t gDirPostFilter = 0;
+static uint8_t isOuterDeadBandTimeout()
+{
+	uint8_t isTimeout = 0;
+	uint8_t timeoutTime = menuGetOuterDeadBand() - 1;
+	if (timeoutTime >= 0) {
+		AVR_ENTER_CRITICAL_REGION();
+		if (gOuterDeadBandTime >= timeoutTime) {
+			isTimeout = 1;
+		}
+		AVR_LEAVE_CRITICAL_REGION();
+	}
+	return isTimeout;
+}
 
 static int16_t centerDeadBand(int16_t input, uint8_t deadBand)
 {
@@ -64,6 +98,21 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 		dir -= 118;
 	}
 
+	gIsOuterDeadBand = isOuterDeadBand(speed, dir);
+	if (gIsOuterDeadBand && isOuterDeadBandTimeout()) {
+		*returnSpeed = 0;
+		*returnDir = 0;
+		AVR_ENTER_CRITICAL_REGION();
+		gSpeedPreFilter = 0;
+		gDirPreFilter = 0;
+		gSpeedBetweenFilters = 0;
+		gDirBetweenFilters = 0;
+		gSpeedPostFilter = 0;
+		gDirPostFilter = 0;
+		AVR_LEAVE_CRITICAL_REGION();
+		return;
+	}
+
 	if (menuGetInvert()) {
 		speed = -speed;
 	}
@@ -71,7 +120,7 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	// Proportional joystick as switch joystick
 	if (menuGetPropAsSwitch())
 	{
-		// TODO lower thresholds?
+		// TODO diagonal
 		uint8_t threshold = 50;
 		if (speed > threshold) {
 			speed = menuGetTopFwdSpeed();
@@ -136,19 +185,28 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	*returnDir = centerDeadBand(dir, 1);
 }
 
-
 // Filter topography and variable naming:
 // preFilter --> [low-pass] --> betweenFilters --> [accel/decel] --> postFilter
 ISR(TCD1_CCA_vect)
 {
-	static double speedBetweenFilters = 0;
-	static double dirBetweenFilters = 0;
 	static uint8_t accelerationCount = 0;
 	static uint8_t decelerationCount = 0;
+	static uint16_t outerDeadBandMillisecondCount = 0;
+
+	if (gIsOuterDeadBand) {
+		outerDeadBandMillisecondCount++;
+		if (outerDeadBandMillisecondCount >= 500) {
+			outerDeadBandMillisecondCount = 0;
+			gOuterDeadBandTime++;
+		}
+	} else {
+		outerDeadBandMillisecondCount = 0;
+		gOuterDeadBandTime = 0;
+	}
 
 	// Low-pass filter (aka Tremor Dampening aka Tremor Suppression aka Sensitivity)
-	speedBetweenFilters = speedBetweenFilters + (double)menuGetSensitivity() * (gSpeedPreFilter - speedBetweenFilters);
-	dirBetweenFilters = dirBetweenFilters + (double)menuGetSensitivity() * (gDirPreFilter - dirBetweenFilters);
+	gSpeedBetweenFilters = gSpeedBetweenFilters + (double)menuGetSensitivity() * (gSpeedPreFilter - gSpeedBetweenFilters);
+	gDirBetweenFilters = gDirBetweenFilters + (double)menuGetSensitivity() * (gDirPreFilter - gDirBetweenFilters);
 
 	// Acceleration/deceleration: must wait X milliseconds before speed/dir is changed by 1
 	accelerationCount++;
@@ -157,16 +215,16 @@ ISR(TCD1_CCA_vect)
 	{
 		accelerationCount = 0;
 
-		if (gSpeedPostFilter >= 0 && speedBetweenFilters > gSpeedPostFilter) {
+		if (gSpeedPostFilter >= 0 && gSpeedBetweenFilters > gSpeedPostFilter) {
 			gSpeedPostFilter++;
 		}
-		if (gSpeedPostFilter <= 0 && speedBetweenFilters < gSpeedPostFilter) {
+		if (gSpeedPostFilter <= 0 && gSpeedBetweenFilters < gSpeedPostFilter) {
 			gSpeedPostFilter--;
 		}
-		if (gDirPostFilter >= 0 && dirBetweenFilters > gDirPostFilter) {
+		if (gDirPostFilter >= 0 && gDirBetweenFilters > gDirPostFilter) {
 			gDirPostFilter++;
 		}
-		if (gDirPostFilter <= 0 && dirBetweenFilters < gDirPostFilter) {
+		if (gDirPostFilter <= 0 && gDirBetweenFilters < gDirPostFilter) {
 			gDirPostFilter--;
 		}
 	}
@@ -175,28 +233,28 @@ ISR(TCD1_CCA_vect)
 	{
 		decelerationCount = 0;
 
-		if (gSpeedPostFilter > 0 && speedBetweenFilters < gSpeedPostFilter) {
+		if (gSpeedPostFilter > 0 && gSpeedBetweenFilters < gSpeedPostFilter) {
 			gSpeedPostFilter--;
-			if (speedBetweenFilters < 0) {
+			if (gSpeedBetweenFilters < 0) {
 				gSpeedPostFilter--;
 			}
 		}
-		if (gSpeedPostFilter < 0 && speedBetweenFilters > gSpeedPostFilter) {
+		if (gSpeedPostFilter < 0 && gSpeedBetweenFilters > gSpeedPostFilter) {
 			gSpeedPostFilter++;
-			if (speedBetweenFilters > 0) {
+			if (gSpeedBetweenFilters > 0) {
 				gSpeedPostFilter++;
 			}
 		}
 
-		if (gDirPostFilter > 0 && dirBetweenFilters < gDirPostFilter) {
+		if (gDirPostFilter > 0 && gDirBetweenFilters < gDirPostFilter) {
 			gDirPostFilter--;
-			if (dirBetweenFilters < 0) {
+			if (gDirBetweenFilters < 0) {
 				gDirPostFilter--;
 			}
 		}
-		if (gDirPostFilter < 0 && dirBetweenFilters > gDirPostFilter) {
+		if (gDirPostFilter < 0 && gDirBetweenFilters > gDirPostFilter) {
 			gDirPostFilter++;
-			if (dirBetweenFilters > 0) {
+			if (gDirBetweenFilters > 0) {
 				gDirPostFilter++;
 			}
 		}

@@ -18,6 +18,7 @@ uint8_t menuGetTopTurnSpeed(void);
 float menuGetSensitivity(void);
 uint8_t menuGetAcceleration(void);
 uint8_t menuGetDeceleration(void);
+uint8_t menuGetOuterDeadBand(void);
 uint8_t menuGetCenterDeadBand(void);
 uint8_t menuGetPropAsSwitch(void);
 uint8_t menuGetInvert(void);

@@ -22,13 +22,14 @@
 #define MENU_OPTION_SENSITIVITY 6
 #define MENU_OPTION_ACCELERATION 7
 #define MENU_OPTION_DECELERATION 8
-#define MENU_OPTION_CTR_DEAD_BAND 9
-#define MENU_OPTION_PROP_AS_SWITCH 10
-#define MENU_OPTION_INVERT 11
+#define MENU_OPTION_OUTER_DEAD_BAND 9
+#define MENU_OPTION_CTR_DEAD_BAND 10
+#define MENU_OPTION_PROP_AS_SWITCH 11
+#define MENU_OPTION_INVERT 12
 // We must know how many menu options there are
 #define LAST_MENU_OPTION MENU_OPTION_INVERT
 
-// EEPROM variables and initial values
+// EEPROM variables and sane initial values
 // Note: the initial values are only updated when programming the EEPROM memory (wheelchair.eep)
 uint8_t EEMEM eepromMenuState = 0;
 float EEMEM eepromFwdThrow = 1.0;
@@ -40,6 +41,7 @@ uint8_t EEMEM eepromTopTurnSpeed = 20;
 float EEMEM eepromSensitivity = 0.004;
 uint8_t EEMEM eepromAcceleration = 14;
 uint8_t EEMEM eepromDeceleration = 10;
+uint8_t EEMEM eepromOuterDeadBand = 0;
 uint8_t EEMEM eepromCenterDeadBand = 3;
 uint8_t EEMEM eepromPropAsSwitch = 0;
 uint8_t EEMEM eepromInvert = 0;
@@ -87,6 +89,11 @@ uint8_t menuGetAcceleration(void)
 uint8_t menuGetDeceleration(void)
 {
 	return eeprom_read_byte(&eepromDeceleration);
+}
+
+uint8_t menuGetOuterDeadBand(void)
+{
+	return eeprom_read_byte(&eepromOuterDeadBand);
 }
 
 uint8_t menuGetCenterDeadBand(void)
@@ -231,6 +238,27 @@ void menuUpdate(int16_t speed, int16_t dir)
 			printf("EEPROM written\n");
 		}
 		sprintf(lcdLine1, "Deceleration=%d", menuGetDeceleration());
+		break;
+	case MENU_OPTION_OUTER_DEAD_BAND:
+		if (up && menuGetOuterDeadBand() < 20) {
+			eeprom_update_byte(&eepromOuterDeadBand, menuGetOuterDeadBand() + 1);
+			printf("EEPROM written\n");
+		}
+		if (down && menuGetOuterDeadBand() > 0) {
+			eeprom_update_byte(&eepromOuterDeadBand, menuGetOuterDeadBand() - 1);
+			printf("EEPROM written\n");
+		}
+		if (menuGetOuterDeadBand() == 0) {
+			// 0: off
+			sprintf(lcdLine1, "OuterDB=Off");
+		} else if (menuGetOuterDeadBand() == 1) {
+			// 1: immediate
+			sprintf(lcdLine1, "OuterDB=Immed");
+		} else {
+			// 2: 0.5s, 3: 1.0s, 4: 1.5s, etc
+			// Conversion: y=(x-1)/2
+			sprintf(lcdLine1, "OuterDB=%d.%ds", (menuGetOuterDeadBand()-1)/2, (menuGetOuterDeadBand()-1) % 2 ? 5 : 0);
+		}
 		break;
 	case MENU_OPTION_CTR_DEAD_BAND:
 		if (up && menuGetCenterDeadBand() < 25) {
