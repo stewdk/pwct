@@ -22,5 +22,6 @@ uint8_t menuGetOuterDeadBand(void);
 uint8_t menuGetCenterDeadBand(void);
 uint8_t menuGetPropAsSwitch(void);
 uint8_t menuGetInvert(void);
+void incrementWirelessTimeout();
 
 #endif /* MENU_H_ */

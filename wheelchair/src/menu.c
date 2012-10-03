@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <avr/eeprom.h>
+#include "../atmel/avr_compiler.h"
 #include "menu.h"
 #include "PWCT_io.h"
 #include "lcd_driver.h"
@@ -45,6 +46,15 @@ uint8_t EEMEM eepromOuterDeadBand = 0;
 uint8_t EEMEM eepromCenterDeadBand = 3;
 uint8_t EEMEM eepromPropAsSwitch = 0;
 uint8_t EEMEM eepromInvert = 0;
+
+uint8_t gWirelessTimeout = 0;
+
+void incrementWirelessTimeout()
+{
+	AVR_ENTER_CRITICAL_REGION();
+	gWirelessTimeout++;
+	AVR_LEAVE_CRITICAL_REGION();
+}
 
 float menuGetFwdThrow(void)
 {
@@ -218,6 +228,8 @@ void menuUpdate(int16_t speed, int16_t dir)
 		sprintf(lcdLine1, "Sens.=%1.4f", (double)menuGetSensitivity());
 		break;
 	case MENU_OPTION_ACCELERATION:
+		// Todo: numbers go opposite way (i.e. higher number means accelerate quicker)
+		// Also, impose limits
 		if (up) {
 			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() + 2);
 			printf("EEPROM written\n");
@@ -297,7 +309,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 		lcdLine1[0] = '\0';
 		break;
 	}
-	sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
+	sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, gWirelessTimeout);
 
 	lcdText(lcdLine1, lcdLine2, 0);
 }

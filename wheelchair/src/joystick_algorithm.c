@@ -24,7 +24,7 @@ static volatile int16_t gSpeedPostFilter = 0;
 static volatile int16_t gDirPostFilter = 0;
 
 static volatile uint8_t gIsOuterDeadBand = 0;
-static volatile uint8_t gOuterDeadBandTime = 0;
+static volatile uint8_t gIsOuterDeadBandTimeout = 0;
 
 void joystickAlgorithmInit()
 {
@@ -37,33 +37,25 @@ void joystickAlgorithmInit()
 	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 }
 
-static uint8_t isOuterDeadBand(int16_t speed, int16_t dir)
+static void outerDeadBandLogic(int16_t speed, int16_t dir)
 {
+	// Absolute value to make the logic easier since the dead band is symmetric
 	if (speed < 0) {
 		speed = -speed;
 	}
 	if (dir < 0) {
 		dir = -dir;
 	}
-	if (menuGetOuterDeadBand() && speed + dir > 60) {
-		return 1;
+	AVR_ENTER_CRITICAL_REGION();
+	if (menuGetOuterDeadBand() && (
+		(speed + dir > 60) ||
+		(gIsOuterDeadBand && gIsOuterDeadBandTimeout && (speed > menuGetCenterDeadBand() || dir > menuGetCenterDeadBand()))
+		)) {
+		gIsOuterDeadBand = 1;
 	} else {
-		return 0;
+		gIsOuterDeadBand = 0;
 	}
-}
-
-static uint8_t isOuterDeadBandTimeout()
-{
-	uint8_t isTimeout = 0;
-	uint8_t timeoutTime = menuGetOuterDeadBand() - 1;
-	if (timeoutTime >= 0) {
-		AVR_ENTER_CRITICAL_REGION();
-		if (gOuterDeadBandTime >= timeoutTime) {
-			isTimeout = 1;
-		}
-		AVR_LEAVE_CRITICAL_REGION();
-	}
-	return isTimeout;
+	AVR_LEAVE_CRITICAL_REGION();
 }
 
 static int16_t centerDeadBand(int16_t input, uint8_t deadBand)
@@ -98,19 +90,10 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 		dir -= 118;
 	}
 
-	gIsOuterDeadBand = isOuterDeadBand(speed, dir);
-	if (gIsOuterDeadBand && isOuterDeadBandTimeout()) {
-		*returnSpeed = 0;
-		*returnDir = 0;
-		AVR_ENTER_CRITICAL_REGION();
-		gSpeedPreFilter = 0;
-		gDirPreFilter = 0;
-		gSpeedBetweenFilters = 0;
-		gDirBetweenFilters = 0;
-		gSpeedPostFilter = 0;
-		gDirPostFilter = 0;
-		AVR_LEAVE_CRITICAL_REGION();
-		return;
+	outerDeadBandLogic(speed, dir);
+	if (gIsOuterDeadBand && gIsOuterDeadBandTimeout) {
+		speed = 0;
+		dir = 0;
 	}
 
 	if (menuGetInvert()) {
@@ -120,7 +103,6 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	// Proportional joystick as switch joystick
 	if (menuGetPropAsSwitch())
 	{
-		// TODO diagonal
 		uint8_t threshold = 50;
 		if (speed > threshold) {
 			speed = menuGetTopFwdSpeed();
@@ -192,21 +174,43 @@ ISR(TCD1_CCA_vect)
 	static uint8_t accelerationCount = 0;
 	static uint8_t decelerationCount = 0;
 	static uint16_t outerDeadBandMillisecondCount = 0;
+	static uint8_t outerDeadBandTime = 0;
 
 	if (gIsOuterDeadBand) {
-		outerDeadBandMillisecondCount++;
-		if (outerDeadBandMillisecondCount >= 500) {
-			outerDeadBandMillisecondCount = 0;
-			gOuterDeadBandTime++;
+		if (!gIsOuterDeadBandTimeout) {
+			uint8_t timeoutTime = menuGetOuterDeadBand() - 1;
+			if (timeoutTime == 0) {
+				gIsOuterDeadBandTimeout = 1;
+			} else if (timeoutTime > 0) {
+				outerDeadBandMillisecondCount++;
+				if (outerDeadBandMillisecondCount >= 500) {
+					outerDeadBandMillisecondCount = 0;
+					outerDeadBandTime++;
+					if (outerDeadBandTime >= timeoutTime) {
+						gIsOuterDeadBandTimeout = 1;
+					}
+				}
+			}
 		}
 	} else {
 		outerDeadBandMillisecondCount = 0;
-		gOuterDeadBandTime = 0;
+		outerDeadBandTime = 0;
+		gIsOuterDeadBandTimeout = 0;
 	}
 
 	// Low-pass filter (aka Tremor Dampening aka Tremor Suppression aka Sensitivity)
-	gSpeedBetweenFilters = gSpeedBetweenFilters + (double)menuGetSensitivity() * (gSpeedPreFilter - gSpeedBetweenFilters);
-	gDirBetweenFilters = gDirBetweenFilters + (double)menuGetSensitivity() * (gDirPreFilter - gDirBetweenFilters);
+	if ((gSpeedPreFilter > 0 && gSpeedPreFilter > gSpeedBetweenFilters) ||
+		(gSpeedPreFilter < 0 && gSpeedPreFilter < gSpeedBetweenFilters)) {
+		gSpeedBetweenFilters = gSpeedBetweenFilters + (double)menuGetSensitivity() * (gSpeedPreFilter - gSpeedBetweenFilters);
+	} else {
+		gSpeedBetweenFilters = gSpeedPreFilter;
+	}
+	if ((gDirPreFilter > 0 && gDirPreFilter > gDirBetweenFilters) ||
+		(gDirPreFilter < 0 && gDirPreFilter < gDirBetweenFilters)) {
+		gDirBetweenFilters = gDirBetweenFilters + (double)menuGetSensitivity() * (gDirPreFilter - gDirBetweenFilters);
+	} else {
+		gDirBetweenFilters = gDirPreFilter;
+	}
 
 	// Acceleration/deceleration: must wait X milliseconds before speed/dir is changed by 1
 	accelerationCount++;

@@ -12,6 +12,7 @@
 #include <util/delay.h>
 #include "nordic_driver.h"
 #include "PWCT_io.h"
+#include "menu.h"
 
 #define SPI_SS_bm   PIN4_bm
 #define SPI_MOSI_bm PIN5_bm
@@ -318,6 +319,8 @@ ISR(PORTH_INT0_vect)
 
 		//update remote variables
 		SetInstructorRemote();
+	} else {
+		printf("Status=%d\n", status);
 	}
 	if (status & 0x20) { // Data Sent TX FIFO
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
@@ -338,4 +341,5 @@ ISR(TCF0_OVF_vect)	//packet receive time-out
 	LAST_PACKET.data.array[3] = 0;
 	LAST_PACKET.rxpipe = 0;
 	SetInstructorRemote();
+	incrementWirelessTimeout();
 }
