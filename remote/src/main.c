@@ -59,7 +59,6 @@ int main(void)
 #ifdef STUDENT_JOYSTICK
 
 	while(1) {
-		tglLED();
 		sendData();
 		_delay_ms(5);
 	}

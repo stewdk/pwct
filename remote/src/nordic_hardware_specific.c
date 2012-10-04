@@ -45,7 +45,7 @@ inline void activeMode(void)
 //set CE low if mode == 0, else set CE high
 inline void setMode(uint8_t mode)
 {
-	if(mode) {
+	if (mode) {
 		activeMode();
 	} else {
 		standbyMode();

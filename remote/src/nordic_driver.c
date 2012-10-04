@@ -9,21 +9,7 @@
 #include "nordic_hardware_specific.h"
 #include "remote_hardware.h"
 
-static volatile int8_t RX_DATA_READY_FLAG = 0;
-static volatile int8_t TX_DATA_SENT_FLAG = 0;
-static volatile int8_t MAX_RETRANSMITS_READY_FLAG = 0;
 static volatile NORDIC_PACKET LAST_PACKET;
-
-static void nordic_CopyPacket(NORDIC_PACKET* dest, volatile NORDIC_PACKET* src)
-{
-	AVR_ENTER_CRITICAL_REGION();
-	dest->data.array[0] = src->data.array[0];
-	dest->data.array[1] = src->data.array[1];
-	dest->data.array[2] = src->data.array[2];
-	dest->data.array[3] = src->data.array[3];
-	dest->rxpipe = src->rxpipe;
-	AVR_LEAVE_CRITICAL_REGION();
-}
 
 //make sure txdata and rxdata are at least of length dataSize
 static int8_t nordic_SendCommand(uint8_t cmd, uint8_t *txdata, uint8_t *rxdata, uint8_t dataSize, uint8_t *status)
@@ -132,8 +118,8 @@ int8_t nordic_Initialize(uint8_t receiver)
 	//enable auto retransmit, try 15 times with delay of 500us
 	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x1F, NULL);
 #else //STUDENT_JOYSTICK
-	//disable auto retransmit
-	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x00, NULL);
+	//enable auto retransmit, try 1 time with delay of 2500us
+	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x91, NULL);
 #endif
 
 	//EN_RXADDR_nReg	Default data pipe 0 and 1 enabled
@@ -147,11 +133,21 @@ int8_t nordic_Initialize(uint8_t receiver)
 	err = nordic_WriteRegister(RF_SETUP_nReg, 0x07, NULL);
 
 	//Rx Address data pipe 0
+	//ACK comes in on RX data pipe 0
+#ifdef INSTRUCTOR_REMOTE
 	datas[0] = 0xE7;
 	datas[1] = 0xE7;
 	datas[2] = 0xE7;
 	datas[3] = 0xE7;
 	datas[4] = 0xE7;
+#else //STUDENT_JOYSTICK
+	datas[0] = 0xC2;
+	datas[1] = 0xC2;
+	datas[2] = 0xC2;
+	datas[3] = 0xC2;
+	datas[4] = 0xC2;
+#endif
+
 	err = nordic_WriteRegisters(RX_ADDR_P0_nReg, datas, 5, NULL);
 
 	//Rx Address data pipe 1
@@ -201,42 +197,6 @@ int8_t nordic_Initialize(uint8_t receiver)
 
 	return err;
 }
-
-inline uint8_t nordic_GetStatus(void)
-{
-	uint8_t status;
-	nordic_SendCommand(NOP_nCmd, NULL, NULL, 0, &status);
-	return status;
-}
-
-//stores received data in *data, size is the most data it will return
-//the return value is the number of data bytes stored in data
-uint8_t nordic_GetNewPacket(NORDIC_PACKET* packet)
-{
-	uint8_t packetFound = 0;
-
-	if(RX_DATA_READY_FLAG) {
-		AVR_ENTER_CRITICAL_REGION();	//clear flag and copy packet is a critical section
-		RX_DATA_READY_FLAG = 0;
-		nordic_CopyPacket(packet, &LAST_PACKET);
-		AVR_LEAVE_CRITICAL_REGION();
-		packetFound = 1;
-	}
-	return packetFound;
-}
-
-//stores received data in *data, size is the most data it will return
-//the return value is the number of data bytes stored in data
-void nordic_GetLastPacket(NORDIC_PACKET* packet)
-{
-	nordic_CopyPacket(packet, &LAST_PACKET);
-	if(RX_DATA_READY_FLAG) {
-		AVR_ENTER_CRITICAL_REGION();	//clear flag and copy packet is a critical section
-		RX_DATA_READY_FLAG = 0;
-		AVR_LEAVE_CRITICAL_REGION();
-	}
-}
-
 
 //This sends out the data in txdata, leaves chip in standby tx mode
 void nordic_TransmitData(NORDIC_PACKET * packet)
@@ -290,8 +250,7 @@ inline uint8_t nordic_IRQ(void)
 	previousMode = standbyMode();
 	nordic_SendCommand(NOP_nCmd, NULL, NULL, 0, &status);
 
-	if(status & 0x40) { // Data Ready RX FIFO
-		RX_DATA_READY_FLAG = 1;
+	if (status & 0x40) { // Data Ready RX FIFO
 		//get latest packet
 		nordic_SendCommand(R_RX_PL_WID_nCmd, NULL, &size, 1, NULL);	//get payload size
 		if (size > sizeof(data)) {
@@ -308,13 +267,14 @@ inline uint8_t nordic_IRQ(void)
 		//clear fifo
 		nordic_SendCommand(FLUSH_RX_nCmd, NULL, NULL, 0, NULL);
 	}
-	if(status & 0x20) { // Data Sent TX FIFO
-		TX_DATA_SENT_FLAG = 1;
+	if (status & 0x20) { // Data Sent TX FIFO
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
 	}
-	if(status & 0x10) { // Maximum number of TX retransmits
-		MAX_RETRANSMITS_READY_FLAG = 1;
+	if (status & 0x10) { // Maximum number of TX retransmits
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
+		setLED();
+	} else {
+		clrLED();
 	}
 
 	//clear interrupts

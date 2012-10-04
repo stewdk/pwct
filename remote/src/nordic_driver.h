@@ -53,41 +53,23 @@
 #define FIFO_STATUS_nReg	0x17
 #define DYNPD_nReg			0x1C
 #define FEATURE_nReg		0x1D
-/*
-typedef union {
-	uint8_t array[8];
-	struct {
-		uint8_t LinearActuatorUp;
-		uint8_t LinearActuatorDown;
-		uint8_t DisableWiredJoystick;
-		uint8_t JoystickUp;
-		uint8_t JoystickDown;
-		uint8_t JoystickLeft;
-		uint8_t JoystickRight;
-		uint8_t RequestState;
-	}parts;
-}NORDIC_DATA_PACKET;
-*/
+
 typedef union {
 	uint8_t array[4];
 	struct {
-		uint8_t LinearActuatorUp;
-		uint8_t LinearActuatorDown;
-		uint8_t DisableWiredJoystick;
-		uint8_t JoystickUp;
-
-	}parts;
-}NORDIC_DATA_PACKET;
+		uint8_t SwitchState;
+		uint8_t JoyDirection;
+		uint8_t JoySpeed;
+		uint8_t Reserved;
+	} parts;
+} NORDIC_DATA_PACKET;
 
 typedef struct {
 	NORDIC_DATA_PACKET data;
 	uint8_t rxpipe;
-}NORDIC_PACKET;
+} NORDIC_PACKET;
 
 int8_t nordic_Initialize(uint8_t receiver);
-uint8_t nordic_GetStatus(void);
-uint8_t nordic_GetNewPacket(NORDIC_PACKET* packet);
-void nordic_GetLastPacket(NORDIC_PACKET* packet);
 void nordic_TransmitData(NORDIC_PACKET * packet);
 void nordic_PowerDown(void);
 void nordic_PowerUp(void);
