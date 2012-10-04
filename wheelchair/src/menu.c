@@ -30,8 +30,17 @@
 // We must know how many menu options there are
 #define LAST_MENU_OPTION MENU_OPTION_INVERT
 
+
+uint8_t gWirelessTimeoutCount = 0;
+
+void incrementWirelessTimeout()
+{
+	gWirelessTimeoutCount++;
+}
+
 // EEPROM variables and sane initial values
 // Note: the initial values are only updated when programming the EEPROM memory (wheelchair.eep)
+uint8_t EEMEM eepromIsPlatformDown = 0;
 uint8_t EEMEM eepromMenuState = 0;
 float EEMEM eepromFwdThrow = 1.0;
 float EEMEM eepromRevThrow = 0.8;
@@ -47,13 +56,22 @@ uint8_t EEMEM eepromCenterDeadBand = 3;
 uint8_t EEMEM eepromPropAsSwitch = 0;
 uint8_t EEMEM eepromInvert = 0;
 
-uint8_t gWirelessTimeout = 0;
+void menuPlatformDownPushed() {
+	if (!menuGetIsPlatformDown()) {
+		eeprom_update_byte(&eepromIsPlatformDown, 1);
+		printf("EEPROM written\n");
+	}
+}
 
-void incrementWirelessTimeout()
-{
-	AVR_ENTER_CRITICAL_REGION();
-	gWirelessTimeout++;
-	AVR_LEAVE_CRITICAL_REGION();
+void menuPlatformUpPushed() {
+	if (menuGetIsPlatformDown()) {
+		eeprom_update_byte(&eepromIsPlatformDown, 0);
+		printf("EEPROM written\n");
+	}
+}
+
+uint8_t menuGetIsPlatformDown() {
+	return eeprom_read_byte(&eepromIsPlatformDown);
 }
 
 float menuGetFwdThrow(void)
@@ -128,6 +146,18 @@ void menuUpdate(int16_t speed, int16_t dir)
 	uint8_t right = lcdRightFallingEdge();
 	uint8_t left = lcdLeftFallingEdge();
 
+	char lcdLine1[17];
+	char lcdLine2[17];
+	lcdLine1[16] = '\0';
+	lcdLine2[16] = '\0';
+
+	if (menuGetIsPlatformDown()) {
+		sprintf(lcdLine1, "Platform down");
+		lcdLine2[0] = '\0';
+		lcdText(lcdLine1, lcdLine2, 0);
+		return;
+	}
+
 	if (right)
 	{
 		if (eeprom_read_byte(&eepromMenuState) < LAST_MENU_OPTION) {
@@ -142,11 +172,6 @@ void menuUpdate(int16_t speed, int16_t dir)
 			printf("EEPROM written\n");
 		}
 	}
-
-	char lcdLine1[17];
-	char lcdLine2[17];
-	lcdLine1[16] = '\0';
-	lcdLine2[16] = '\0';
 
 	switch (eeprom_read_byte(&eepromMenuState))
 	{
@@ -309,7 +334,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 		lcdLine1[0] = '\0';
 		break;
 	}
-	sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, gWirelessTimeout);
+	sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, gWirelessTimeoutCount);
 
 	lcdText(lcdLine1, lcdLine2, 0);
 }

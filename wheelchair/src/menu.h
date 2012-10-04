@@ -9,6 +9,9 @@
 #define MENU_H_
 
 void menuUpdate(int16_t speed, int16_t dir);
+void menuPlatformDownPushed();
+void menuPlatformUpPushed();
+uint8_t menuGetIsPlatformDown();
 float menuGetFwdThrow(void);
 float menuGetRevThrow(void);
 float menuGetTurnThrow(void);

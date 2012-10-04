@@ -110,9 +110,9 @@ int main( void )
 
 		if (PanelEStopPressed() || nordic_getInstructorEStop()) {
 			eStop();
-		} else if (!LimitSwitchPressed() || ((state == IDLE || state == LOAD) && actuatorSwitchState)) {
+		} else if (menuGetIsPlatformDown() || ((state == IDLE || state == LOAD) && actuatorSwitchState)) {
 			state = LOAD;
-		} else if (LimitSwitchPressed() && (moveDir != 0 || speed != 0 || dir != 0)) {
+		} else if (!menuGetIsPlatformDown() && (moveDir != 0 || speed != 0 || dir != 0)) {
 			state = MOVE;
 		} else {
 			state = IDLE;
@@ -132,6 +132,7 @@ int main( void )
 				printf("Load\n");
 				break;
 			}
+			previousState = state;
 		}
 		*/
 
@@ -151,9 +152,11 @@ int main( void )
 				break;
 			case 1:	//actuator switch down, lower platform
 				LowerPlatform();
+				menuPlatformDownPushed();
 				break;
 			case 2: // actuator switch up, raise platform
 				RaisePlatform();
+				menuPlatformUpPushed();
 				break;
 			}
 			//turn on platform down LED
@@ -167,7 +170,6 @@ int main( void )
 			PORTK.OUTCLR = PIN5_bm;
 			break;
 		}
-		//previousState = state;
 	}
 	return 1;
 }

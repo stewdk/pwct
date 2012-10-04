@@ -128,7 +128,7 @@ void initLinearActuators(void)
 	ADC_FreeRunning_Enable(&ADCB);
 }
 
-int8_t RaisePlatform(void)
+int8_t LowerPlatform(void)
 {
 	int8_t err = 0;
 
@@ -168,7 +168,7 @@ ISR(TCE0_OVF_vect)
 	setTop();
 }
 
-int8_t LowerPlatform(void)
+int8_t RaisePlatform(void)
 {
 	int8_t err = 0;
 
