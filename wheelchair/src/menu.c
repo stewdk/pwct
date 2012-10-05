@@ -24,11 +24,11 @@
 #define MENU_OPTION_ACCELERATION 7
 #define MENU_OPTION_DECELERATION 8
 #define MENU_OPTION_OUTER_DEAD_BAND 9
-#define MENU_OPTION_CTR_DEAD_BAND 10
-#define MENU_OPTION_PROP_AS_SWITCH 11
-#define MENU_OPTION_INVERT 12
+#define MENU_OPTION_PROP_AS_SWITCH 10
+#define MENU_OPTION_INVERT 11
+#define MENU_OPTION_CTR_DEAD_BAND 12
 // We must know how many menu options there are
-#define LAST_MENU_OPTION MENU_OPTION_INVERT
+#define LAST_MENU_OPTION MENU_OPTION_CTR_DEAD_BAND
 
 
 uint8_t gWirelessTimeoutCount = 0;
@@ -49,8 +49,8 @@ uint8_t EEMEM eepromTopFwdSpeed = 50;
 uint8_t EEMEM eepromTopRevSpeed = 35;
 uint8_t EEMEM eepromTopTurnSpeed = 20;
 float EEMEM eepromSensitivity = 0.004;
-uint8_t EEMEM eepromAcceleration = 14;
-uint8_t EEMEM eepromDeceleration = 10;
+uint8_t EEMEM eepromAcceleration = 16;
+uint8_t EEMEM eepromDeceleration = 12;
 uint8_t EEMEM eepromOuterDeadBand = 0;
 uint8_t EEMEM eepromCenterDeadBand = 3;
 uint8_t EEMEM eepromPropAsSwitch = 0;
@@ -209,33 +209,33 @@ void menuUpdate(int16_t speed, int16_t dir)
 		sprintf(lcdLine1, "TurnThrow=%.2f", (double)menuGetTurnThrow());
 		break;
 	case MENU_OPTION_TOP_FWD_SPEED:
-		if (up) {
+		if (up && menuGetTopFwdSpeed() < 125) {
 			eeprom_update_byte(&eepromTopFwdSpeed, menuGetTopFwdSpeed() + 5);
 			printf("EEPROM written\n");
 		}
-		if (down) {
+		if (down && menuGetTopFwdSpeed() > 5) {
 			eeprom_update_byte(&eepromTopFwdSpeed, menuGetTopFwdSpeed() - 5);
 			printf("EEPROM written\n");
 		}
 		sprintf(lcdLine1, "TopFwdSpd=%d", menuGetTopFwdSpeed());
 		break;
 	case MENU_OPTION_TOP_REV_SPEED:
-		if (up) {
+		if (up && menuGetTopRevSpeed() < 125) {
 			eeprom_update_byte(&eepromTopRevSpeed, menuGetTopRevSpeed() + 5);
 			printf("EEPROM written\n");
 		}
-		if (down) {
+		if (down && menuGetTopRevSpeed() > 5) {
 			eeprom_update_byte(&eepromTopRevSpeed, menuGetTopRevSpeed() - 5);
 			printf("EEPROM written\n");
 		}
 		sprintf(lcdLine1, "TopRevSpd=%d", menuGetTopRevSpeed());
 		break;
 	case MENU_OPTION_TOP_TURN_SPEED:
-		if (up) {
+		if (up && menuGetTopTurnSpeed() < 125) {
 			eeprom_update_byte(&eepromTopTurnSpeed, menuGetTopTurnSpeed() + 5);
 			printf("EEPROM written\n");
 		}
-		if (down) {
+		if (down && menuGetTopTurnSpeed() > 5) {
 			eeprom_update_byte(&eepromTopTurnSpeed, menuGetTopTurnSpeed() - 5);
 			printf("EEPROM written\n");
 		}
@@ -246,35 +246,33 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eeprom_update_float(&eepromSensitivity, menuGetSensitivity() * 2);
 			printf("EEPROM written\n");
 		}
-		if (down && menuGetSensitivity() > 0.0001) {
+		if (down && menuGetSensitivity() > 0.0002) {
 			eeprom_update_float(&eepromSensitivity, menuGetSensitivity() / 2);
 			printf("EEPROM written\n");
 		}
-		sprintf(lcdLine1, "Sens.=%1.4f", (double)menuGetSensitivity());
+		sprintf(lcdLine1, "Sens.=%.4f", (double)menuGetSensitivity());
 		break;
 	case MENU_OPTION_ACCELERATION:
-		// Todo: numbers go opposite way (i.e. higher number means accelerate quicker)
-		// Also, impose limits
-		if (up) {
-			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() + 2);
+		if (up && menuGetAcceleration() > 4) {
+			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() - 4);
 			printf("EEPROM written\n");
 		}
-		if (down) {
-			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() - 2);
+		if (down && menuGetAcceleration() < 100) {
+			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() + 4);
 			printf("EEPROM written\n");
 		}
-		sprintf(lcdLine1, "Acceleration=%d", menuGetAcceleration());
+		sprintf(lcdLine1, "Acceleration=%d", (104 - menuGetAcceleration()) / 4);
 		break;
 	case MENU_OPTION_DECELERATION:
-		if (up) {
-			eeprom_update_byte(&eepromDeceleration, menuGetDeceleration() + 2);
+		if (up && menuGetDeceleration() > 4) {
+			eeprom_update_byte(&eepromDeceleration, menuGetDeceleration() - 4);
 			printf("EEPROM written\n");
 		}
-		if (down) {
-			eeprom_update_byte(&eepromDeceleration, menuGetDeceleration() - 2);
+		if (down && menuGetDeceleration() < 100) {
+			eeprom_update_byte(&eepromDeceleration, menuGetDeceleration() + 4);
 			printf("EEPROM written\n");
 		}
-		sprintf(lcdLine1, "Deceleration=%d", menuGetDeceleration());
+		sprintf(lcdLine1, "Deceleration=%d", (104 - menuGetDeceleration()) / 4);
 		break;
 	case MENU_OPTION_OUTER_DEAD_BAND:
 		if (up && menuGetOuterDeadBand() < 20) {
@@ -298,7 +296,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 		}
 		break;
 	case MENU_OPTION_CTR_DEAD_BAND:
-		if (up && menuGetCenterDeadBand() < 25) {
+		if (up && menuGetCenterDeadBand() < 10) {
 			eeprom_update_byte(&eepromCenterDeadBand, menuGetCenterDeadBand() + 1);
 			printf("EEPROM written\n");
 		}
@@ -334,7 +332,8 @@ void menuUpdate(int16_t speed, int16_t dir)
 		lcdLine1[0] = '\0';
 		break;
 	}
-	sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, gWirelessTimeoutCount);
+	//sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, gWirelessTimeoutCount);
+	sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
 
 	lcdText(lcdLine1, lcdLine2, 0);
 }
