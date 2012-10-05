@@ -35,11 +35,17 @@ static void sendData(void)
 	uint8_t y = GetADC6(); // Speed
 	memset(&testPacket, 0, sizeof(testPacket));
 
-	testPacket.data.array[0] = GetButton() | GetJoyState();
 #ifdef STUDENT_JOYSTICK
-	testPacket.data.array[1] = x; // shearMapX(x, y);
-	testPacket.data.array[2] = y; // shearMapY(x, y);
+	testPacket.data.array[0] = getBuddyButtons();
+	if (isJoystickEnabled()) {
+		testPacket.data.array[1] = x; // shearMapX(x, y);
+		testPacket.data.array[2] = y; // shearMapY(x, y);
+	} else {
+		testPacket.data.array[1] = 0;
+		testPacket.data.array[2] = 0;
+	}
 #else //INSTRUCTOR_REMOTE
+	testPacket.data.array[0] = GetButton() | GetJoyState();
 	testPacket.data.array[1] = x;
 	testPacket.data.array[2] = y;
 #endif

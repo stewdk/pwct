@@ -13,6 +13,7 @@
 #include "nordic_driver.h"
 #include "PWCT_io.h"
 #include "menu.h"
+#include "../atmel/avr_compiler.h"
 
 #define SPI_SS_bm   PIN4_bm
 #define SPI_MOSI_bm PIN5_bm
@@ -56,8 +57,8 @@ static inline void hardwareSetup()
 	// Packet time-out counter
 	TCF0.CTRLA = TC_CLKSEL_OFF_gc;
 	// 1 tick = 32us
-	// 3125 ticks = 0.1s
-	TCF0.PER = 3125;
+	// 7812 ticks = 0.25s
+	TCF0.PER = 7812;
 	// Set timer to normal mode
 	TCF0.CTRLB = TC_WGMODE_NORMAL_gc;
 	// Set overflow interrupt (level med)
@@ -268,23 +269,45 @@ uint8_t nordic_getInstructorRight()
 
 uint8_t nordic_getWirelessPropJoySpeed(void)
 {
-	return LAST_PACKET.data.array[2];
+	uint8_t speed = 0;
+	AVR_ENTER_CRITICAL_REGION();
+	if (LAST_PACKET.rxpipe == 1) {
+		speed = LAST_PACKET.data.array[2];
+	}
+	AVR_LEAVE_CRITICAL_REGION();
+	return speed;
 }
 
 uint8_t nordic_getWirelessPropJoyDirection(void)
 {
-	return LAST_PACKET.data.array[1];
+	uint8_t dir = 0;
+	AVR_ENTER_CRITICAL_REGION();
+	if (LAST_PACKET.rxpipe == 1) {
+		dir = LAST_PACKET.data.array[1];
+	}
+	AVR_LEAVE_CRITICAL_REGION();
+	return dir;
 }
 
 static void SetInstructorRemote(void)
 {
-	INSTRUCTOR_ESTOP = (    (LAST_PACKET.data.array[0] & 0b00000001) >> 0 );
+	if ((LAST_PACKET.data.array[0] & 0b00000001) >> 0 ) {
+		INSTRUCTOR_ESTOP = 1;
+	}
 	INSTRUCTOR_LA_UP = (    (LAST_PACKET.data.array[0] & 0b00000010) >> 1 );
 	INSTRUCTOR_LA_DOWN = (  (LAST_PACKET.data.array[0] & 0b00000100) >> 2 );
-	INSTRUCTOR_FORWARD = (  (LAST_PACKET.data.array[0] & 0b00001000) >> 3 );
-	INSTRUCTOR_REVERSE = (  (LAST_PACKET.data.array[0] & 0b00010000) >> 4 );
-	INSTRUCTOR_LEFT = (     (LAST_PACKET.data.array[0] & 0b00100000) >> 5 );
-	INSTRUCTOR_RIGHT = (    (LAST_PACKET.data.array[0] & 0b01000000) >> 6 );
+
+	if (LAST_PACKET.rxpipe == 1) {
+		INSTRUCTOR_FORWARD = (  (LAST_PACKET.data.array[0] & 0b00001000) >> 3 );
+		INSTRUCTOR_REVERSE = (  (LAST_PACKET.data.array[0] & 0b00010000) >> 4 );
+		INSTRUCTOR_LEFT = (     (LAST_PACKET.data.array[0] & 0b00100000) >> 5 );
+		INSTRUCTOR_RIGHT = (    (LAST_PACKET.data.array[0] & 0b01000000) >> 6 );
+	} else {
+		INSTRUCTOR_FORWARD = 0;
+		INSTRUCTOR_REVERSE = 0;
+		INSTRUCTOR_LEFT = 0;
+		INSTRUCTOR_RIGHT = 0;
+	}
 }
 
 ISR(PORTH_INT0_vect)

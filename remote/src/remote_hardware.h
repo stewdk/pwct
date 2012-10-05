@@ -29,16 +29,18 @@ uint8_t GetADC5(void);
 uint8_t GetADC6(void);
 uint8_t GetButton(void);
 uint8_t GetJoyState(void);
-uint8_t isDebounceDone(void);
-//uint8_t noButtonsPressed(void);
 uint8_t isTimeOut(void);
 void resetTimeOut(void);
-//void clrDebounceFlag(void);
 uint8_t hasButtonChanged(void);
 void clrButtonChanged(void);
 void initHardware(void);
 void setLED(void);
 void clrLED(void);
 void tglLED(void);
+#ifdef STUDENT_JOYSTICK
+uint8_t isJoystickEnabled();
+uint8_t getBuddyButtons();
+#endif // STUDENT_JOYSTICK
+
 
 #endif /* REMOTE_HARDWARE_H_ */

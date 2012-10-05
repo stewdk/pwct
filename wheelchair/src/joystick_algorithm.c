@@ -153,8 +153,26 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 		}
 	}
 
-	// We've applied the direct-mapped logic, now it's time to hand it off to the filters
+	// We don't want to get interrupted while accessing shared variables
 	AVR_ENTER_CRITICAL_REGION();
+
+	// Buddy buttons override
+	if (nordic_getInstructorForward() != nordic_getInstructorReverse()) {
+		if (nordic_getInstructorForward()) {
+			speed = menuGetTopFwdSpeed();
+		} else if (nordic_getInstructorReverse()) {
+			speed = -menuGetTopRevSpeed();
+		}
+	}
+	if (nordic_getInstructorRight() != nordic_getInstructorLeft()) {
+		if (nordic_getInstructorRight()) {
+			dir = menuGetTopTurnSpeed();
+		} else if (nordic_getInstructorLeft()) {
+			dir = -menuGetTopTurnSpeed();
+		}
+	}
+
+	// We've applied the direct-mapped logic, now it's time to hand it off to the filters
 	gSpeedPreFilter = speed;
 	gDirPreFilter = dir;
 

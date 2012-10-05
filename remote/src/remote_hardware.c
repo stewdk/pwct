@@ -13,8 +13,8 @@
 #define cbi(var, mask)   ((var) &= (uint8_t)~(1 << mask))
 
 //can't be more than 255
-#define msecToWait 100
-#define msecTimeout	1000
+#define MSEC_TO_WAIT 100
+#define MSEC_TIMEOUT 1000
 
 static uint8_t valueADC5;
 static uint8_t valueADC6;
@@ -52,6 +52,7 @@ void initHardware(void)
 	//enable pullups on button lines
 	PORTA |= _BV(PA0) | _BV(PA1) | _BV(PA2) | _BV(PA3) | _BV(PA4) | _BV(PA5);
 
+#ifdef INSTRUCTOR_REMOTE
 	//enable button interrupts to wake remote
 	//PA0	Button	PCINT0
 	//PA1	Up		PCINT1
@@ -69,9 +70,11 @@ void initHardware(void)
 	TCNT0H = 0;
 	TCNT0L = 0;
 	TCCR0B = _BV(CS02) | _BV(CS00);	// clk/1024
-	OCR0B = (uint8_t)((msecTimeout & 0xFF00) >> 8);
-	OCR0A = (uint8_t)((msecTimeout & 0x00FF) >> 0);
+	OCR0B = (uint8_t)((MSEC_TIMEOUT & 0xFF00) >> 8);
+	OCR0A = (uint8_t)((MSEC_TIMEOUT & 0x00FF) >> 0);
 	TIMSK |= _BV(OCIE0A); //compare A interrupt enabled
+
+#endif // INSTRUCTOR_REMOTE
 
 //INIT ADC
 	// ADMUX = REFS1:0 ADLAR MUX4:0
@@ -127,14 +130,34 @@ uint8_t GetButton(void)
 	return BUTTON_DISABLE | BUTTON_UP | BUTTON_DOWN;
 }
 
+#ifdef STUDENT_JOYSTICK
+uint8_t isJoystickEnabled()
+{
+	return !(PINA & _BV(PA1));
+}
+
+uint8_t getBuddyButtons()
+{
+	uint8_t buttonMask = 0;
+	if (!(PINA & _BV(PA4))) {
+		buttonMask |= 0b00001000; // Forward
+	}
+	if (!(PINA & _BV(PA2))) {
+		buttonMask |= 0b00010000; // Reverse
+	}
+	if (!(PINA & _BV(PA5))) {
+		buttonMask |= 0b00100000; // Left
+	}
+	if (!(PINA & _BV(PA3))) {
+		buttonMask |= 0b01000000; // Right
+	}
+	return buttonMask;
+}
+#endif // STUDENT_JOYSTICK
+
 uint8_t GetJoyState(void)
 {
 	return JOY_STATE;
-}
-
-uint8_t isDebounceDone(void)
-{
-	return DEBOUNCE_DONE;
 }
 
 uint8_t hasButtonChanged(void)
@@ -146,17 +169,7 @@ void clrButtonChanged(void)
 {
 	BUTTON_CHANGED_FLAG = 0;
 }
-/*
-void clrDebounceFlag(void) {
-	DEBOUNCE_DONE = 0;
-}
-*/
-/*
-uint8_t noButtonsPressed(void)
-{
-	return (BUTTON_UP | BUTTON_DOWN | BUTTON_DISABLE) ? 0 : 1;
-}
-*/
+
 ISR(ADC_vect)
 {
 	if (ADMUX == ADMUX_ADC5_bm)
@@ -221,7 +234,7 @@ ISR(PCINT_vect)
 	DEBOUNCE_DONE =  0;
 
 	//set compare timer
-	OCR1A = msecToWait+TCNT1;
+	OCR1A = MSEC_TO_WAIT + TCNT1;
 	TIMSK |= 0b01000000; //compare A interrupt enabled
 
 	BUTTON_START_STATE = 0;

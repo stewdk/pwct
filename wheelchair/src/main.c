@@ -50,7 +50,6 @@ static void eStop(void)
  */
 int main( void )
 {
-	uint8_t moveDir = 0;
 	uint8_t actuatorSwitchState = 0;
 	states state = IDLE;
 	//states previousState = IDLE;
@@ -104,7 +103,6 @@ int main( void )
 
 		//check inputs for state changes
 		SampleInputs();
-		moveDir = getSwitchMoveDirection();
 
 		actuatorSwitchState = ActuatorSwitchPressed();
 
@@ -112,7 +110,7 @@ int main( void )
 			eStop();
 		} else if (menuGetIsPlatformDown() || ((state == IDLE || state == LOAD) && actuatorSwitchState)) {
 			state = LOAD;
-		} else if (!menuGetIsPlatformDown() && (moveDir != 0 || speed != 0 || dir != 0)) {
+		} else if (!menuGetIsPlatformDown() && (speed != 0 || dir != 0)) {
 			state = MOVE;
 		} else {
 			state = IDLE;
@@ -164,7 +162,6 @@ int main( void )
 			break;
 		case MOVE:
 			StopPlatform();
-			OmniMove(moveDir);
 			setMotors(speed, dir);
 			//turn off platform down LED
 			PORTK.OUTCLR = PIN5_bm;
