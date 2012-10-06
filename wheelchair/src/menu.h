@@ -8,6 +8,7 @@
 #ifndef MENU_H_
 #define MENU_H_
 
+void menuInit();
 void menuUpdate(int16_t speed, int16_t dir);
 void menuPlatformDownPushed();
 void menuPlatformUpPushed();

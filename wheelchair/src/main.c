@@ -80,6 +80,8 @@ int main( void )
 
 	initLCDDriver();
 
+	menuInit();
+
 	WDT_EnableAndSetTimeout(WDT_PER_128CLK_gc);	//set watchdog timer for 0.125s period
 
 	printf("\nReset\n");

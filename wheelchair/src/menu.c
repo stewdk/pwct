@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <avr/eeprom.h>
 #include "../atmel/avr_compiler.h"
+#include "../atmel/wdt_driver.h"
 #include "menu.h"
 #include "PWCT_io.h"
 #include "lcd_driver.h"
@@ -38,105 +39,192 @@ void incrementWirelessTimeout()
 	gWirelessTimeoutCount++;
 }
 
-// EEPROM variables and sane initial values
+// EEPROM variables, RAM shadow variables, and sane initial values
 // Note: the initial values are only updated when programming the EEPROM memory (wheelchair.eep)
 uint8_t EEMEM eepromIsPlatformDown = 0;
+uint8_t eepromShadowIsPlatformDown = 0;
+
 uint8_t EEMEM eepromMenuState = 0;
+uint8_t eepromShadowMenuState = 0;
+
 float EEMEM eepromFwdThrow = 1.0;
+float eepromShadowFwdThrow = 1.0;
+
 float EEMEM eepromRevThrow = 0.8;
+float eepromShadowRevThrow = 0.8;
+
 float EEMEM eepromTurnThrow = 0.6;
+float eepromShadowTurnThrow = 0.6;
+
 uint8_t EEMEM eepromTopFwdSpeed = 50;
+uint8_t eepromShadowTopFwdSpeed = 50;
+
 uint8_t EEMEM eepromTopRevSpeed = 35;
+uint8_t eepromShadowTopRevSpeed = 35;
+
 uint8_t EEMEM eepromTopTurnSpeed = 20;
+uint8_t eepromShadowTopTurnSpeed = 20;
+
 float EEMEM eepromSensitivity = 0.004;
+float eepromShadowSensitivity = 0.004;
+
 uint8_t EEMEM eepromAcceleration = 16;
+uint8_t eepromShadowAcceleration = 16;
+
 uint8_t EEMEM eepromDeceleration = 12;
+uint8_t eepromShadowDeceleration = 12;
+
 uint8_t EEMEM eepromOuterDeadBand = 0;
+uint8_t eepromShadowOuterDeadBand = 0;
+
 uint8_t EEMEM eepromCenterDeadBand = 3;
+uint8_t eepromShadowCenterDeadBand = 3;
+
 uint8_t EEMEM eepromPropAsSwitch = 0;
+uint8_t eepromShadowPropAsSwitch = 0;
+
 uint8_t EEMEM eepromInvert = 0;
+uint8_t eepromShadowInvert = 0;
+
+void menuInit()
+{
+	// Initialize all shadow variables
+	eepromShadowIsPlatformDown = eeprom_read_byte(&eepromIsPlatformDown);
+	eepromShadowMenuState = eeprom_read_byte(&eepromMenuState);
+	eepromShadowFwdThrow = eeprom_read_float(&eepromFwdThrow);
+	eepromShadowRevThrow = eeprom_read_float(&eepromRevThrow);
+	eepromShadowTurnThrow = eeprom_read_float(&eepromTurnThrow);
+	eepromShadowTopFwdSpeed = eeprom_read_byte(&eepromTopFwdSpeed);
+	eepromShadowTopRevSpeed = eeprom_read_byte(&eepromTopRevSpeed);
+	eepromShadowTopTurnSpeed = eeprom_read_byte(&eepromTopTurnSpeed);
+	eepromShadowSensitivity = eeprom_read_float(&eepromSensitivity);
+	eepromShadowAcceleration = eeprom_read_byte(&eepromAcceleration);
+	eepromShadowDeceleration = eeprom_read_byte(&eepromDeceleration);
+	eepromShadowOuterDeadBand = eeprom_read_byte(&eepromOuterDeadBand);
+	eepromShadowCenterDeadBand = eeprom_read_byte(&eepromCenterDeadBand);
+	eepromShadowPropAsSwitch = eeprom_read_byte(&eepromPropAsSwitch);
+	eepromShadowInvert = eeprom_read_byte(&eepromInvert);
+}
+
+static void eepromCorrupt()
+{
+	motorEStop();
+	while (1)
+	{
+		lcdText("EEPROM corrupt", "Ver. " __DATE__, 0);
+		WDT_Reset();
+	}
+}
+
+static void eepromUpdateByteSafe(uint8_t *eepromVariable, uint8_t *shadowVariable, uint8_t newValue)
+{
+	uint8_t readValue;
+	eeprom_busy_wait();
+	eeprom_update_byte(eepromVariable, newValue);
+	printf("EEPROM written\n");
+	eeprom_busy_wait();
+	readValue = eeprom_read_byte(eepromVariable);
+	if (readValue != newValue) {
+		eepromCorrupt();
+	} else {
+		*shadowVariable = newValue;
+	}
+}
+
+static void eepromUpdateFloatSafe(float *eepromVariable, float *shadowVariable, float newValue)
+{
+	float readValue;
+	eeprom_busy_wait();
+	eeprom_update_float(eepromVariable, newValue);
+	printf("EEPROM written\n");
+	eeprom_busy_wait();
+	readValue = eeprom_read_float(eepromVariable);
+	if (readValue != newValue) {
+		eepromCorrupt();
+	} else {
+		*shadowVariable = newValue;
+	}
+}
 
 void menuPlatformDownPushed() {
-	if (!menuGetIsPlatformDown()) {
-		eeprom_update_byte(&eepromIsPlatformDown, 1);
-		printf("EEPROM written\n");
+	if (!eepromShadowIsPlatformDown) {
+		eepromUpdateByteSafe(&eepromIsPlatformDown, &eepromShadowIsPlatformDown, 1);
 	}
 }
 
 void menuPlatformUpPushed() {
-	if (menuGetIsPlatformDown()) {
-		eeprom_update_byte(&eepromIsPlatformDown, 0);
-		printf("EEPROM written\n");
+	if (eepromShadowIsPlatformDown) {
+		eepromUpdateByteSafe(&eepromIsPlatformDown, &eepromShadowIsPlatformDown, 0);
 	}
 }
 
 uint8_t menuGetIsPlatformDown() {
-	return eeprom_read_byte(&eepromIsPlatformDown);
+	return eepromShadowIsPlatformDown;
 }
 
 float menuGetFwdThrow(void)
 {
-	return eeprom_read_float(&eepromFwdThrow);
+	return eepromShadowFwdThrow;
 }
 
 float menuGetRevThrow(void)
 {
-	return eeprom_read_float(&eepromRevThrow);
+	return eepromShadowRevThrow;
 }
 
 float menuGetTurnThrow(void)
 {
-	return eeprom_read_float(&eepromTurnThrow);
+	return eepromShadowTurnThrow;
 }
 
 uint8_t menuGetTopFwdSpeed(void)
 {
-	return eeprom_read_byte(&eepromTopFwdSpeed);
+	return eepromShadowTopFwdSpeed;
 }
 
 uint8_t menuGetTopRevSpeed(void)
 {
-	return eeprom_read_byte(&eepromTopRevSpeed);
+	return eepromShadowTopRevSpeed;
 }
 
 uint8_t menuGetTopTurnSpeed(void)
 {
-	return eeprom_read_byte(&eepromTopTurnSpeed);
+	return eepromShadowTopTurnSpeed;
 }
 
 float menuGetSensitivity(void)
 {
-	return eeprom_read_float(&eepromSensitivity);
+	return eepromShadowSensitivity;
 }
 
 uint8_t menuGetAcceleration(void)
 {
-	return eeprom_read_byte(&eepromAcceleration);
+	return eepromShadowAcceleration;
 }
 
 uint8_t menuGetDeceleration(void)
 {
-	return eeprom_read_byte(&eepromDeceleration);
+	return eepromShadowDeceleration;
 }
 
 uint8_t menuGetOuterDeadBand(void)
 {
-	return eeprom_read_byte(&eepromOuterDeadBand);
+	return eepromShadowOuterDeadBand;
 }
 
 uint8_t menuGetCenterDeadBand(void)
 {
-	return eeprom_read_byte(&eepromCenterDeadBand);
+	return eepromShadowCenterDeadBand;
 }
 
 uint8_t menuGetPropAsSwitch(void)
 {
-	return eeprom_read_byte(&eepromPropAsSwitch);
+	return eepromShadowPropAsSwitch;
 }
 
 uint8_t menuGetInvert(void)
 {
-	return eeprom_read_byte(&eepromInvert);
+	return eepromShadowInvert;
 }
 
 void menuUpdate(int16_t speed, int16_t dir)
@@ -151,7 +239,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 	lcdLine1[16] = '\0';
 	lcdLine2[16] = '\0';
 
-	if (menuGetIsPlatformDown()) {
+	if (eepromShadowIsPlatformDown) {
 		sprintf(lcdLine1, "Platform down");
 		lcdLine2[0] = '\0';
 		lcdText(lcdLine1, lcdLine2, 0);
@@ -160,173 +248,147 @@ void menuUpdate(int16_t speed, int16_t dir)
 
 	if (right)
 	{
-		if (eeprom_read_byte(&eepromMenuState) < LAST_MENU_OPTION) {
-			eeprom_update_byte(&eepromMenuState, eeprom_read_byte(&eepromMenuState) + 1);
-			printf("EEPROM written\n");
+		if (eepromShadowMenuState < LAST_MENU_OPTION) {
+			eepromUpdateByteSafe(&eepromMenuState, &eepromShadowMenuState, eepromShadowMenuState + 1);
 		}
 	}
 	if (left)
 	{
-		if (eeprom_read_byte(&eepromMenuState) > 0) {
-			eeprom_update_byte(&eepromMenuState, eeprom_read_byte(&eepromMenuState) - 1);
-			printf("EEPROM written\n");
+		if (eepromShadowMenuState > 0) {
+			eepromUpdateByteSafe(&eepromMenuState, &eepromShadowMenuState, eepromShadowMenuState - 1);
 		}
 	}
 
-	switch (eeprom_read_byte(&eepromMenuState))
+	switch (eepromShadowMenuState)
 	{
 	case MENU_OPTION_FWD_THROW:
-		if (up && menuGetFwdThrow() < 2.45) {
-			eeprom_update_float(&eepromFwdThrow, menuGetFwdThrow() + 0.05);
-			printf("EEPROM written\n");
+		if (up && eepromShadowFwdThrow < 2.45) {
+			eepromUpdateFloatSafe(&eepromFwdThrow, &eepromShadowFwdThrow, eepromShadowFwdThrow + 0.05);
 		}
-		if (down && menuGetFwdThrow() > 0.05) {
-			eeprom_update_float(&eepromFwdThrow, menuGetFwdThrow() - 0.05);
-			printf("EEPROM written\n");
+		if (down && eepromShadowFwdThrow > 0.05) {
+			eepromUpdateFloatSafe(&eepromFwdThrow, &eepromShadowFwdThrow, eepromShadowFwdThrow - 0.05);
 		}
-		sprintf(lcdLine1, "FwdThrow=%.2f", (double)menuGetFwdThrow());
+		sprintf(lcdLine1, "FwdThrow=%.2f", (double)eepromShadowFwdThrow);
 		break;
 	case MENU_OPTION_REV_THROW:
-		if (up && menuGetRevThrow() < 2.45) {
-			eeprom_update_float(&eepromRevThrow, menuGetRevThrow() + 0.05);
-			printf("EEPROM written\n");
+		if (up && eepromShadowRevThrow < 2.45) {
+			eepromUpdateFloatSafe(&eepromRevThrow, &eepromShadowRevThrow, eepromShadowRevThrow + 0.05);
 		}
-		if (down && menuGetRevThrow() > 0.05) {
-			eeprom_update_float(&eepromRevThrow, menuGetRevThrow() - 0.05);
-			printf("EEPROM written\n");
+		if (down && eepromShadowRevThrow > 0.05) {
+			eepromUpdateFloatSafe(&eepromRevThrow, &eepromShadowRevThrow, eepromShadowRevThrow - 0.05);
 		}
-		sprintf(lcdLine1, "RevThrow=%.2f", (double)menuGetRevThrow());
+		sprintf(lcdLine1, "RevThrow=%.2f", (double)eepromShadowRevThrow);
 		break;
 	case MENU_OPTION_TURN_THROW:
-		if (up && menuGetTurnThrow() < 2.45) {
-			eeprom_update_float(&eepromTurnThrow, menuGetTurnThrow() + 0.05);
-			printf("EEPROM written\n");
+		if (up && eepromShadowTurnThrow < 2.45) {
+			eepromUpdateFloatSafe(&eepromTurnThrow, &eepromShadowTurnThrow, eepromShadowTurnThrow + 0.05);
 		}
-		if (down && menuGetTurnThrow() > 0.05) {
-			eeprom_update_float(&eepromTurnThrow, menuGetTurnThrow() - 0.05);
-			printf("EEPROM written\n");
+		if (down && eepromShadowTurnThrow > 0.05) {
+			eepromUpdateFloatSafe(&eepromTurnThrow, &eepromShadowTurnThrow, eepromShadowTurnThrow - 0.05);
 		}
-		sprintf(lcdLine1, "TurnThrow=%.2f", (double)menuGetTurnThrow());
+		sprintf(lcdLine1, "TurnThrow=%.2f", (double)eepromShadowTurnThrow);
 		break;
 	case MENU_OPTION_TOP_FWD_SPEED:
-		if (up && menuGetTopFwdSpeed() < 125) {
-			eeprom_update_byte(&eepromTopFwdSpeed, menuGetTopFwdSpeed() + 5);
-			printf("EEPROM written\n");
+		if (up && eepromShadowTopFwdSpeed < 125) {
+			eepromUpdateByteSafe(&eepromTopFwdSpeed, &eepromShadowTopFwdSpeed, eepromShadowTopFwdSpeed + 5);
 		}
-		if (down && menuGetTopFwdSpeed() > 5) {
-			eeprom_update_byte(&eepromTopFwdSpeed, menuGetTopFwdSpeed() - 5);
-			printf("EEPROM written\n");
+		if (down && eepromShadowTopFwdSpeed > 5) {
+			eepromUpdateByteSafe(&eepromTopFwdSpeed, &eepromShadowTopFwdSpeed, eepromShadowTopFwdSpeed - 5);
 		}
-		sprintf(lcdLine1, "TopFwdSpd=%d", menuGetTopFwdSpeed());
+		sprintf(lcdLine1, "TopFwdSpd=%d", eepromShadowTopFwdSpeed);
 		break;
 	case MENU_OPTION_TOP_REV_SPEED:
-		if (up && menuGetTopRevSpeed() < 125) {
-			eeprom_update_byte(&eepromTopRevSpeed, menuGetTopRevSpeed() + 5);
-			printf("EEPROM written\n");
+		if (up && eepromShadowTopRevSpeed < 125) {
+			eepromUpdateByteSafe(&eepromTopRevSpeed, &eepromShadowTopRevSpeed, eepromShadowTopRevSpeed + 5);
 		}
-		if (down && menuGetTopRevSpeed() > 5) {
-			eeprom_update_byte(&eepromTopRevSpeed, menuGetTopRevSpeed() - 5);
-			printf("EEPROM written\n");
+		if (down && eepromShadowTopRevSpeed > 5) {
+			eepromUpdateByteSafe(&eepromTopRevSpeed, &eepromShadowTopRevSpeed, eepromShadowTopRevSpeed - 5);
 		}
-		sprintf(lcdLine1, "TopRevSpd=%d", menuGetTopRevSpeed());
+		sprintf(lcdLine1, "TopRevSpd=%d", eepromShadowTopRevSpeed);
 		break;
 	case MENU_OPTION_TOP_TURN_SPEED:
-		if (up && menuGetTopTurnSpeed() < 125) {
-			eeprom_update_byte(&eepromTopTurnSpeed, menuGetTopTurnSpeed() + 5);
-			printf("EEPROM written\n");
+		if (up && eepromShadowTopTurnSpeed < 125) {
+			eepromUpdateByteSafe(&eepromTopTurnSpeed, &eepromShadowTopTurnSpeed, eepromShadowTopTurnSpeed + 5);
 		}
-		if (down && menuGetTopTurnSpeed() > 5) {
-			eeprom_update_byte(&eepromTopTurnSpeed, menuGetTopTurnSpeed() - 5);
-			printf("EEPROM written\n");
+		if (down && eepromShadowTopTurnSpeed > 5) {
+			eepromUpdateByteSafe(&eepromTopTurnSpeed, &eepromShadowTopTurnSpeed, eepromShadowTopTurnSpeed - 5);
 		}
-		sprintf(lcdLine1, "TopTurnSpd=%d", menuGetTopTurnSpeed());
+		sprintf(lcdLine1, "TopTurnSpd=%d", eepromShadowTopTurnSpeed);
 		break;
 	case MENU_OPTION_SENSITIVITY:
-		if (up && menuGetSensitivity() < 0.5) {
-			eeprom_update_float(&eepromSensitivity, menuGetSensitivity() * 2);
-			printf("EEPROM written\n");
+		if (up && eepromShadowSensitivity < 0.5) {
+			eepromUpdateFloatSafe(&eepromSensitivity, &eepromShadowSensitivity, eepromShadowSensitivity * 2);
 		}
-		if (down && menuGetSensitivity() > 0.0002) {
-			eeprom_update_float(&eepromSensitivity, menuGetSensitivity() / 2);
-			printf("EEPROM written\n");
+		if (down && eepromShadowSensitivity > 0.0002) {
+			eepromUpdateFloatSafe(&eepromSensitivity, &eepromShadowSensitivity, eepromShadowSensitivity / 2);
 		}
-		sprintf(lcdLine1, "Sens.=%.4f", (double)menuGetSensitivity());
+		sprintf(lcdLine1, "Sens.=%.4f", (double)eepromShadowSensitivity);
 		break;
 	case MENU_OPTION_ACCELERATION:
-		if (up && menuGetAcceleration() > 4) {
-			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() - 4);
-			printf("EEPROM written\n");
+		if (up && eepromShadowAcceleration > 4) {
+			eepromUpdateByteSafe(&eepromAcceleration, &eepromShadowAcceleration, eepromShadowAcceleration - 4);
 		}
-		if (down && menuGetAcceleration() < 100) {
-			eeprom_update_byte(&eepromAcceleration, menuGetAcceleration() + 4);
-			printf("EEPROM written\n");
+		if (down && eepromShadowAcceleration < 100) {
+			eepromUpdateByteSafe(&eepromAcceleration, &eepromShadowAcceleration, eepromShadowAcceleration + 4);
 		}
-		sprintf(lcdLine1, "Acceleration=%d", (104 - menuGetAcceleration()) / 4);
+		sprintf(lcdLine1, "Acceleration=%d", (104 - eepromShadowAcceleration) / 4);
 		break;
 	case MENU_OPTION_DECELERATION:
-		if (up && menuGetDeceleration() > 4) {
-			eeprom_update_byte(&eepromDeceleration, menuGetDeceleration() - 4);
-			printf("EEPROM written\n");
+		if (up && eepromShadowDeceleration > 4) {
+			eepromUpdateByteSafe(&eepromDeceleration, &eepromShadowDeceleration, eepromShadowDeceleration - 4);
 		}
-		if (down && menuGetDeceleration() < 100) {
-			eeprom_update_byte(&eepromDeceleration, menuGetDeceleration() + 4);
-			printf("EEPROM written\n");
+		if (down && eepromShadowDeceleration < 100) {
+			eepromUpdateByteSafe(&eepromDeceleration, &eepromShadowDeceleration, eepromShadowDeceleration + 4);
 		}
-		sprintf(lcdLine1, "Deceleration=%d", (104 - menuGetDeceleration()) / 4);
+		sprintf(lcdLine1, "Deceleration=%d", (104 - eepromShadowDeceleration) / 4);
 		break;
 	case MENU_OPTION_OUTER_DEAD_BAND:
-		if (up && menuGetOuterDeadBand() < 20) {
-			eeprom_update_byte(&eepromOuterDeadBand, menuGetOuterDeadBand() + 1);
-			printf("EEPROM written\n");
+		if (up && eepromShadowOuterDeadBand < 20) {
+			eepromUpdateByteSafe(&eepromOuterDeadBand, &eepromShadowOuterDeadBand, eepromShadowOuterDeadBand + 1);
 		}
-		if (down && menuGetOuterDeadBand() > 0) {
-			eeprom_update_byte(&eepromOuterDeadBand, menuGetOuterDeadBand() - 1);
-			printf("EEPROM written\n");
+		if (down && eepromShadowOuterDeadBand > 0) {
+			eepromUpdateByteSafe(&eepromOuterDeadBand, &eepromShadowOuterDeadBand, eepromShadowOuterDeadBand - 1);
 		}
-		if (menuGetOuterDeadBand() == 0) {
+		if (eepromShadowOuterDeadBand == 0) {
 			// 0: off
 			sprintf(lcdLine1, "OuterDB=Off");
-		} else if (menuGetOuterDeadBand() == 1) {
+		} else if (eepromShadowOuterDeadBand == 1) {
 			// 1: immediate
 			sprintf(lcdLine1, "OuterDB=Immed");
 		} else {
 			// 2: 0.5s, 3: 1.0s, 4: 1.5s, etc
 			// Conversion: y=(x-1)/2
-			sprintf(lcdLine1, "OuterDB=%d.%ds", (menuGetOuterDeadBand()-1)/2, (menuGetOuterDeadBand()-1) % 2 ? 5 : 0);
+			sprintf(lcdLine1, "OuterDB=%d.%ds", (eepromShadowOuterDeadBand-1)/2, (eepromShadowOuterDeadBand-1) % 2 ? 5 : 0);
 		}
 		break;
 	case MENU_OPTION_CTR_DEAD_BAND:
-		if (up && menuGetCenterDeadBand() < 10) {
-			eeprom_update_byte(&eepromCenterDeadBand, menuGetCenterDeadBand() + 1);
-			printf("EEPROM written\n");
+		if (up && eepromShadowCenterDeadBand < 10) {
+			eepromUpdateByteSafe(&eepromCenterDeadBand, &eepromShadowCenterDeadBand, eepromShadowCenterDeadBand + 1);
 		}
-		if (down && menuGetCenterDeadBand() > 0) {
-			eeprom_update_byte(&eepromCenterDeadBand, menuGetCenterDeadBand() - 1);
-			printf("EEPROM written\n");
+		if (down && eepromShadowCenterDeadBand > 0) {
+			eepromUpdateByteSafe(&eepromCenterDeadBand, &eepromShadowCenterDeadBand, eepromShadowCenterDeadBand - 1);
 		}
-		sprintf(lcdLine1, "Ctr DeadBand=%d", menuGetCenterDeadBand());
+		sprintf(lcdLine1, "Ctr DeadBand=%d", eepromShadowCenterDeadBand);
 		break;
 	case MENU_OPTION_PROP_AS_SWITCH:
 		if (up || down) {
-			if (menuGetPropAsSwitch()) {
-				eeprom_update_byte(&eepromPropAsSwitch, 0);
+			if (eepromShadowPropAsSwitch) {
+				eepromUpdateByteSafe(&eepromPropAsSwitch, &eepromShadowPropAsSwitch, 0);
 			} else {
-				eeprom_update_byte(&eepromPropAsSwitch, 1);
+				eepromUpdateByteSafe(&eepromPropAsSwitch, &eepromShadowPropAsSwitch, 1);
 			}
-			printf("EEPROM written\n");
 		}
-		sprintf(lcdLine1, "PropAsSwitch=%s", menuGetPropAsSwitch() ? "On" : "Off");
+		sprintf(lcdLine1, "PropAsSwitch=%s", eepromShadowPropAsSwitch ? "On" : "Off");
 		break;
 	case MENU_OPTION_INVERT:
 		if (up || down) {
-			if (menuGetInvert()) {
-				eeprom_update_byte(&eepromInvert, 0);
+			if (eepromShadowInvert) {
+				eepromUpdateByteSafe(&eepromInvert, &eepromShadowInvert, 0);
 			} else {
-				eeprom_update_byte(&eepromInvert, 1);
+				eepromUpdateByteSafe(&eepromInvert, &eepromShadowInvert, 1);
 			}
-			printf("EEPROM written\n");
 		}
-		sprintf(lcdLine1, "Invert=%s", menuGetInvert() ? "On" : "Off");
+		sprintf(lcdLine1, "Invert=%s", eepromShadowInvert ? "On" : "Off");
 		break;
 	default:
 		lcdLine1[0] = '\0';
