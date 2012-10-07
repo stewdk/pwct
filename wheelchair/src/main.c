@@ -44,6 +44,54 @@ static void eStop(void)
 	}
 }
 
+static void displayResetReason(double delayTime_ms)
+{
+	uint8_t status = RST.STATUS;
+	char lcdLine[17];
+	lcdLine[16] = '\0';
+	sprintf(lcdLine, "RST.STATUS=0x%02x", status);
+
+	RST.STATUS = status & 0x3F;
+
+	if (status & RST_SDRF_bm) {
+		lcdText("Spike Detect Rst", lcdLine, 1);
+		while (1) {
+		}
+	}
+	if (status & RST_SRF_bm) {
+		lcdText("Software Reset", lcdLine, 1);
+		while (1) {
+		}
+	}
+	if (status & RST_PDIRF_bm) {
+		lcdText("PDI Reset", lcdLine, 1);
+		_delay_ms(delayTime_ms);
+	}
+	if (status & RST_WDRF_bm) {
+		lcdText("Watchdog Reset", lcdLine, 1);
+		while (1) {
+		}
+	}
+	if (status & RST_BORF_bm) {
+		lcdText("Brown-out Reset", lcdLine, 1);
+		while (1) {
+		}
+	}
+	if (status & RST_EXTRF_bm) {
+		lcdText("External Reset", lcdLine, 1);
+		_delay_ms(delayTime_ms);
+	}
+	if (status & RST_PORF_bm) {
+		lcdText("Power-on Reset", lcdLine, 1);
+		_delay_ms(delayTime_ms);
+	}
+	if (status == 0) {
+		lcdText("RST.STATUS == 0", lcdLine, 1);
+		while (1) {
+		}
+	}
+}
+
 /*! \brief Main function
  *
  *  This function initializes the hardware, starts monitoring input signals.
@@ -79,6 +127,8 @@ int main( void )
 	nordic_Initialize();
 
 	initLCDDriver();
+
+	displayResetReason(500);
 
 	menuInit();
 
