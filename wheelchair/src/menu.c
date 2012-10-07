@@ -54,6 +54,11 @@ uint8_t eepromShadowCurrentProfile = 0;
 uint8_t EEMEM eepromMenuState = 0;
 uint8_t eepromShadowMenuState = 0;
 
+char EEMEM eepromProfileName[PROFILE_COUNT][17] = {"Profile 1", "Profile 2", "Profile 3", "Profile 4", "Profile 5",
+	"Profile 6", "Profile 7", "Profile 8", "Profile 9", "Profile 10", "Profile 11", "Profile 12", "Profile 13",
+	"Profile 14", "Profile 15", "Profile 16", "Profile 17", "Profile 18", "Profile 19", "Profile 20"};
+char currentProfileName[17];
+
 float EEMEM eepromFwdThrow[PROFILE_COUNT] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5};
 float eepromShadowFwdThrow = 1.0;
 
@@ -73,7 +78,7 @@ uint8_t EEMEM eepromTopTurnSpeed[PROFILE_COUNT] = {20, 20, 20, 20, 20, 20, 20, 2
 uint8_t eepromShadowTopTurnSpeed = 20;
 
 float EEMEM eepromSensitivity[PROFILE_COUNT] = {0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.256};
-float eepromShadowSensitivity = 0.004;
+float eepromShadowSensitivity = 0.008;
 
 uint8_t EEMEM eepromAcceleration[PROFILE_COUNT] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
 uint8_t eepromShadowAcceleration = 16;
@@ -112,6 +117,7 @@ void menuInit()
 		eepromCorrupt();
 	}
 	eepromShadowMenuState = eeprom_read_byte(&eepromMenuState);
+	eeprom_read_block(currentProfileName, eepromProfileName[eepromShadowCurrentProfile], 17);
 	eepromShadowFwdThrow = eeprom_read_float(&eepromFwdThrow[eepromShadowCurrentProfile]);
 	eepromShadowRevThrow = eeprom_read_float(&eepromRevThrow[eepromShadowCurrentProfile]);
 	eepromShadowTurnThrow = eeprom_read_float(&eepromTurnThrow[eepromShadowCurrentProfile]);
@@ -279,8 +285,9 @@ void menuUpdate(int16_t speed, int16_t dir)
 		if (down && eepromShadowCurrentProfile > 0) {
 			eepromUpdateByteSafe(&eepromCurrentProfile, &eepromShadowCurrentProfile, eepromShadowCurrentProfile - 1);
 		}
-		sprintf(lcdLine1, "Profile=%d", eepromShadowCurrentProfile + 1);
 		menuInit();
+		sprintf(lcdLine1, "Choose Profile");
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_FWD_THROW:
 		if (up && eepromShadowFwdThrow < 2.45) {
@@ -290,6 +297,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateFloatSafe(&eepromFwdThrow[eepromShadowCurrentProfile], &eepromShadowFwdThrow, eepromShadowFwdThrow - 0.05);
 		}
 		sprintf(lcdLine1, "FwdThrow=%.2f", (double)eepromShadowFwdThrow);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_REV_THROW:
 		if (up && eepromShadowRevThrow < 2.45) {
@@ -299,6 +307,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateFloatSafe(&eepromRevThrow[eepromShadowCurrentProfile], &eepromShadowRevThrow, eepromShadowRevThrow - 0.05);
 		}
 		sprintf(lcdLine1, "RevThrow=%.2f", (double)eepromShadowRevThrow);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_TURN_THROW:
 		if (up && eepromShadowTurnThrow < 2.45) {
@@ -308,6 +317,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateFloatSafe(&eepromTurnThrow[eepromShadowCurrentProfile], &eepromShadowTurnThrow, eepromShadowTurnThrow - 0.05);
 		}
 		sprintf(lcdLine1, "TurnThrow=%.2f", (double)eepromShadowTurnThrow);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_TOP_FWD_SPEED:
 		if (up && eepromShadowTopFwdSpeed < 125) {
@@ -317,6 +327,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateByteSafe(&eepromTopFwdSpeed[eepromShadowCurrentProfile], &eepromShadowTopFwdSpeed, eepromShadowTopFwdSpeed - 5);
 		}
 		sprintf(lcdLine1, "TopFwdSpd=%d", eepromShadowTopFwdSpeed);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_TOP_REV_SPEED:
 		if (up && eepromShadowTopRevSpeed < 125) {
@@ -326,6 +337,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateByteSafe(&eepromTopRevSpeed[eepromShadowCurrentProfile], &eepromShadowTopRevSpeed, eepromShadowTopRevSpeed - 5);
 		}
 		sprintf(lcdLine1, "TopRevSpd=%d", eepromShadowTopRevSpeed);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_TOP_TURN_SPEED:
 		if (up && eepromShadowTopTurnSpeed < 125) {
@@ -335,6 +347,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateByteSafe(&eepromTopTurnSpeed[eepromShadowCurrentProfile], &eepromShadowTopTurnSpeed, eepromShadowTopTurnSpeed - 5);
 		}
 		sprintf(lcdLine1, "TopTurnSpd=%d", eepromShadowTopTurnSpeed);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_SENSITIVITY:
 		if (up && eepromShadowSensitivity < 0.5) {
@@ -344,6 +357,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateFloatSafe(&eepromSensitivity[eepromShadowCurrentProfile], &eepromShadowSensitivity, eepromShadowSensitivity / 2);
 		}
 		sprintf(lcdLine1, "Sens.=%.4f", (double)eepromShadowSensitivity);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_ACCELERATION:
 		if (up && eepromShadowAcceleration > 4) {
@@ -353,6 +367,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateByteSafe(&eepromAcceleration[eepromShadowCurrentProfile], &eepromShadowAcceleration, eepromShadowAcceleration + 4);
 		}
 		sprintf(lcdLine1, "Acceleration=%d", (104 - eepromShadowAcceleration) / 4);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_DECELERATION:
 		if (up && eepromShadowDeceleration > 4) {
@@ -362,6 +377,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateByteSafe(&eepromDeceleration[eepromShadowCurrentProfile], &eepromShadowDeceleration, eepromShadowDeceleration + 4);
 		}
 		sprintf(lcdLine1, "Deceleration=%d", (104 - eepromShadowDeceleration) / 4);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_OUTER_DEAD_BAND:
 		if (up && eepromShadowOuterDeadBand < 20) {
@@ -381,6 +397,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			// Conversion: y=(x-1)/2
 			sprintf(lcdLine1, "OuterDB=%d.%ds", (eepromShadowOuterDeadBand-1)/2, (eepromShadowOuterDeadBand-1) % 2 ? 5 : 0);
 		}
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_CTR_DEAD_BAND:
 		if (up && eepromShadowCenterDeadBand < 10) {
@@ -390,6 +407,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			eepromUpdateByteSafe(&eepromCenterDeadBand[eepromShadowCurrentProfile], &eepromShadowCenterDeadBand, eepromShadowCenterDeadBand - 1);
 		}
 		sprintf(lcdLine1, "Ctr DeadBand=%d", eepromShadowCenterDeadBand);
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_PROP_AS_SWITCH:
 		if (up || down) {
@@ -400,6 +418,7 @@ void menuUpdate(int16_t speed, int16_t dir)
 			}
 		}
 		sprintf(lcdLine1, "PropAsSwitch=%s", eepromShadowPropAsSwitch ? "On" : "Off");
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	case MENU_OPTION_INVERT:
 		if (up || down) {
@@ -410,13 +429,15 @@ void menuUpdate(int16_t speed, int16_t dir)
 			}
 		}
 		sprintf(lcdLine1, "Invert=%s", eepromShadowInvert ? "On" : "Off");
+		sprintf(lcdLine2, "%s", currentProfileName);
 		break;
 	default:
 		lcdLine1[0] = '\0';
+		lcdLine2[0] = '\0';
 		break;
 	}
 	//sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, gWirelessTimeoutCount);
-	sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
+	//sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
 
 	lcdText(lcdLine1, lcdLine2, 0);
 }
