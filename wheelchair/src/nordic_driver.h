@@ -72,10 +72,10 @@ void nordic_Initialize();
 uint8_t nordic_getInstructorEStop();
 uint8_t nordic_getInstructorLAUp();
 uint8_t nordic_getInstructorLADown();
-uint8_t nordic_getInstructorForward();
-uint8_t nordic_getInstructorReverse();
-uint8_t nordic_getInstructorLeft();
-uint8_t nordic_getInstructorRight();
+uint8_t nordic_getStudentForward();
+uint8_t nordic_getStudentReverse();
+uint8_t nordic_getStudentLeft();
+uint8_t nordic_getStudentRight();
 
 uint8_t nordic_getWirelessPropJoySpeed();
 uint8_t nordic_getWirelessPropJoyDirection();

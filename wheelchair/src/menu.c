@@ -436,8 +436,11 @@ void menuUpdate(int16_t speed, int16_t dir)
 		lcdLine2[0] = '\0';
 		break;
 	}
-	//sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, gWirelessTimeoutCount);
-	//sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
+
+	//if (eepromShadowMenuState != MENU_OPTION_PROFILE) {
+		//sprintf(lcdLine2, "S=%4d T=%4d%3d", speed, dir, gWirelessTimeoutCount);
+		//sprintf(lcdLine2, "S=%4d T=%4d", speed, dir);
+	//}
 
 	lcdText(lcdLine1, lcdLine2, 0);
 }

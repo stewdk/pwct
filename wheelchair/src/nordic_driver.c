@@ -22,13 +22,15 @@
 
 static volatile NORDIC_PACKET LAST_PACKET;
 
-static uint8_t INSTRUCTOR_FORWARD;
-static uint8_t INSTRUCTOR_REVERSE;
-static uint8_t INSTRUCTOR_LEFT;
-static uint8_t INSTRUCTOR_RIGHT;
-static uint8_t INSTRUCTOR_LA_UP;
-static uint8_t INSTRUCTOR_LA_DOWN;
-static uint8_t INSTRUCTOR_ESTOP;
+static uint8_t gStudentForward;
+static uint8_t gStudentReverse;
+static uint8_t gStudentLeft;
+static uint8_t gStudentRight;
+static uint8_t gStudentSpeed;
+static uint8_t gStudentDirection;
+static uint8_t gInstructorLAUp;
+static uint8_t gInstructorLADown;
+static uint8_t gInstructorEStop;
 
 static inline void hardwareSetup()
 {
@@ -215,98 +217,85 @@ static void nordicSetup()
 	_delay_us(1500);
 
 	activeMode(); //start receiving
-
-	//set default values
-	INSTRUCTOR_FORWARD = 0;
-	INSTRUCTOR_REVERSE = 0;
-	INSTRUCTOR_LEFT = 0;
-	INSTRUCTOR_RIGHT = 0;
-	INSTRUCTOR_LA_UP = 0;
-	INSTRUCTOR_LA_DOWN = 0;
-	INSTRUCTOR_ESTOP = 0;
 }
 
 void nordic_Initialize()
 {
 	hardwareSetup();
 	nordicSetup();
+
+	//set default values
+	gStudentForward = 0;
+	gStudentReverse = 0;
+	gStudentLeft = 0;
+	gStudentRight = 0;
+	gStudentSpeed = 0;
+	gStudentDirection = 0;
+	gInstructorLAUp = 0;
+	gInstructorLADown = 0;
+	gInstructorEStop = 0;
 }
 
 uint8_t nordic_getInstructorEStop()
 {
-	return INSTRUCTOR_ESTOP;
+	return gInstructorEStop;
 }
 
 uint8_t nordic_getInstructorLAUp()
 {
-	return INSTRUCTOR_LA_UP;
+	return gInstructorLAUp;
 }
 
 uint8_t nordic_getInstructorLADown()
 {
-	return INSTRUCTOR_LA_DOWN;
+	return gInstructorLADown;
 }
 
-uint8_t nordic_getInstructorForward()
+uint8_t nordic_getStudentForward()
 {
-	return INSTRUCTOR_FORWARD;
+	return gStudentForward;
 }
 
-uint8_t nordic_getInstructorReverse()
+uint8_t nordic_getStudentReverse()
 {
-	return INSTRUCTOR_REVERSE;
+	return gStudentReverse;
 }
 
-uint8_t nordic_getInstructorLeft()
+uint8_t nordic_getStudentLeft()
 {
-	return INSTRUCTOR_LEFT;
+	return gStudentLeft;
 }
 
-uint8_t nordic_getInstructorRight()
+uint8_t nordic_getStudentRight()
 {
-	return INSTRUCTOR_RIGHT;
+	return gStudentRight;
 }
 
 uint8_t nordic_getWirelessPropJoySpeed(void)
 {
-	uint8_t speed = 0;
-	AVR_ENTER_CRITICAL_REGION();
-	if (LAST_PACKET.rxpipe == 1) {
-		speed = LAST_PACKET.data.array[2];
-	}
-	AVR_LEAVE_CRITICAL_REGION();
-	return speed;
+	return gStudentSpeed;
 }
 
 uint8_t nordic_getWirelessPropJoyDirection(void)
 {
-	uint8_t dir = 0;
-	AVR_ENTER_CRITICAL_REGION();
-	if (LAST_PACKET.rxpipe == 1) {
-		dir = LAST_PACKET.data.array[1];
-	}
-	AVR_LEAVE_CRITICAL_REGION();
-	return dir;
+	return gStudentDirection;
 }
 
-static void SetInstructorRemote(void)
+static void setVariables(void)
 {
 	if ((LAST_PACKET.data.array[0] & 0b00000001) >> 0 ) {
-		INSTRUCTOR_ESTOP = 1;
+		gInstructorEStop = 1;
 	}
-	INSTRUCTOR_LA_UP = (    (LAST_PACKET.data.array[0] & 0b00000010) >> 1 );
-	INSTRUCTOR_LA_DOWN = (  (LAST_PACKET.data.array[0] & 0b00000100) >> 2 );
+	gInstructorLAUp = (    (LAST_PACKET.data.array[0] & 0b00000010) >> 1 );
+	gInstructorLADown = (  (LAST_PACKET.data.array[0] & 0b00000100) >> 2 );
 
 	if (LAST_PACKET.rxpipe == 1) {
-		INSTRUCTOR_FORWARD = (  (LAST_PACKET.data.array[0] & 0b00001000) >> 3 );
-		INSTRUCTOR_REVERSE = (  (LAST_PACKET.data.array[0] & 0b00010000) >> 4 );
-		INSTRUCTOR_LEFT = (     (LAST_PACKET.data.array[0] & 0b00100000) >> 5 );
-		INSTRUCTOR_RIGHT = (    (LAST_PACKET.data.array[0] & 0b01000000) >> 6 );
-	} else {
-		INSTRUCTOR_FORWARD = 0;
-		INSTRUCTOR_REVERSE = 0;
-		INSTRUCTOR_LEFT = 0;
-		INSTRUCTOR_RIGHT = 0;
+		gStudentForward = (  (LAST_PACKET.data.array[0] & 0b00001000) >> 3 );
+		gStudentReverse = (  (LAST_PACKET.data.array[0] & 0b00010000) >> 4 );
+		gStudentLeft = (     (LAST_PACKET.data.array[0] & 0b00100000) >> 5 );
+		gStudentRight = (    (LAST_PACKET.data.array[0] & 0b01000000) >> 6 );
+		gStudentSpeed = LAST_PACKET.data.array[2];
+		gStudentDirection = LAST_PACKET.data.array[1];
 	}
 }
 
@@ -341,7 +330,7 @@ ISR(PORTH_INT0_vect)
 		nordic_SendCommand(FLUSH_RX_nCmd, NULL, NULL, 0, NULL);
 
 		//update remote variables
-		SetInstructorRemote();
+		setVariables();
 	} else {
 		printf("Status=%d\n", status);
 	}
@@ -363,6 +352,6 @@ ISR(TCF0_OVF_vect)	//packet receive time-out
 	LAST_PACKET.data.array[2] = 0;
 	LAST_PACKET.data.array[3] = 0;
 	LAST_PACKET.rxpipe = 0;
-	SetInstructorRemote();
+	setVariables();
 	incrementWirelessTimeout();
 }

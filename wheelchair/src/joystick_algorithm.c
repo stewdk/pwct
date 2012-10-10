@@ -157,17 +157,17 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	AVR_ENTER_CRITICAL_REGION();
 
 	// Buddy buttons override
-	if (nordic_getInstructorForward() != nordic_getInstructorReverse()) {
-		if (nordic_getInstructorForward()) {
+	if (nordic_getStudentForward() != nordic_getStudentReverse()) {
+		if (nordic_getStudentForward()) {
 			speed = menuGetTopFwdSpeed();
-		} else if (nordic_getInstructorReverse()) {
+		} else if (nordic_getStudentReverse()) {
 			speed = -menuGetTopRevSpeed();
 		}
 	}
-	if (nordic_getInstructorRight() != nordic_getInstructorLeft()) {
-		if (nordic_getInstructorRight()) {
+	if (nordic_getStudentRight() != nordic_getStudentLeft()) {
+		if (nordic_getStudentRight()) {
 			dir = menuGetTopTurnSpeed();
-		} else if (nordic_getInstructorLeft()) {
+		} else if (nordic_getStudentLeft()) {
 			dir = -menuGetTopTurnSpeed();
 		}
 	}

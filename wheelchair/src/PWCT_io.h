@@ -24,8 +24,6 @@ void initPWCTio(void);
 void SampleInputs(void);
 void OmniStopMove(void);
 void OmniMove(uint8_t moveDir);
-uint8_t getSwitchMoveDirection(void);
-uint8_t getPANEL_BUMPER_OVERRIDE(void);
 uint16_t getWiredPropJoySpeed(void);
 uint16_t getWiredPropJoyDirection(void);
 uint8_t lcdUpFallingEdge(void);
