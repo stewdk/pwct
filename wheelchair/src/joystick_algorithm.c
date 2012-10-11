@@ -6,6 +6,7 @@
  */ 
 
 #include <stdint.h>
+#include <math.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "../atmel/avr_compiler.h"
@@ -39,17 +40,13 @@ void joystickAlgorithmInit()
 
 static void outerDeadBandLogic(int16_t speed, int16_t dir)
 {
-	// Absolute value to make the logic easier since the dead band is symmetric
-	if (speed < 0) {
-		speed = -speed;
-	}
-	if (dir < 0) {
-		dir = -dir;
-	}
+	// Calculate joystick distance from center using pythagorean theorem
+	double r = sqrt(speed * speed + dir * dir);
+
 	AVR_ENTER_CRITICAL_REGION();
 	if (menuGetOuterDeadBand() && (
-		(speed + dir > 60) ||
-		(gIsOuterDeadBand && gIsOuterDeadBandTimeout && (speed > menuGetCenterDeadBand() || dir > menuGetCenterDeadBand()))
+		(r > 60) ||
+		(gIsOuterDeadBand && gIsOuterDeadBandTimeout && (r > menuGetCenterDeadBand() + 5))
 		)) {
 		gIsOuterDeadBand = 1;
 	} else {
@@ -58,21 +55,24 @@ static void outerDeadBandLogic(int16_t speed, int16_t dir)
 	AVR_LEAVE_CRITICAL_REGION();
 }
 
-static int16_t centerDeadBand(int16_t input, uint8_t deadBand)
+static void centerDeadBand(int16_t *x, int16_t *y, uint8_t deadBand)
 {
-	if (input > 0) {
-		input -= deadBand;
-		if (input < 0) {
-			input = 0;
-		}
+	double theta;
+	double r;
+
+	// Convert to polar coordinates
+	r = sqrt((*x) * (*x) + (*y) * (*y));
+	theta = atan2(*y, *x);
+
+	// Apply the deadband
+	r = r - (double)deadBand;
+	if (r < 0) {
+		r = 0;
 	}
-	if (input < 0) {
-		input += deadBand;
-		if (input > 0) {
-			input = 0;
-		}
-	}
-	return input;
+
+	// Convert back to cartesian coordinates
+	*x = (r * cos(theta));
+	*y = (r * sin(theta));
 }
 
 void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
@@ -82,7 +82,7 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 
 	// fwd/rev offset
 	if (speed) {
-		speed -= 116;
+		speed -= 117;
 	}
 
 	// right/left offset
@@ -122,9 +122,8 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	}
 	else
 	{
-		// center dead band
-		speed = centerDeadBand(speed, menuGetCenterDeadBand());
-		dir = centerDeadBand(dir, menuGetCenterDeadBand());
+		// apply center dead band
+		centerDeadBand(&dir, &speed, menuGetCenterDeadBand());
 
 		// fwd/rev throw
 		if (speed > 0) {
@@ -180,9 +179,8 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	dir = gDirPostFilter;
 	AVR_LEAVE_CRITICAL_REGION();
 
-	// One last post-filter operation
-	*returnSpeed = centerDeadBand(speed, 1);
-	*returnDir = centerDeadBand(dir, 1);
+	*returnSpeed = speed;
+	*returnDir = dir;
 }
 
 // Filter topography and variable naming:
@@ -219,13 +217,13 @@ ISR(TCD1_CCA_vect)
 	// Low-pass filter (aka Tremor Dampening aka Tremor Suppression aka Sensitivity)
 	if ((gSpeedPreFilter > 0 && gSpeedPreFilter > gSpeedBetweenFilters) ||
 		(gSpeedPreFilter < 0 && gSpeedPreFilter < gSpeedBetweenFilters)) {
-		gSpeedBetweenFilters = gSpeedBetweenFilters + (double)menuGetSensitivity() * (gSpeedPreFilter - gSpeedBetweenFilters);
+		gSpeedBetweenFilters = gSpeedBetweenFilters + menuGetSensitivity() * (gSpeedPreFilter - gSpeedBetweenFilters);
 	} else {
 		gSpeedBetweenFilters = gSpeedPreFilter;
 	}
 	if ((gDirPreFilter > 0 && gDirPreFilter > gDirBetweenFilters) ||
 		(gDirPreFilter < 0 && gDirPreFilter < gDirBetweenFilters)) {
-		gDirBetweenFilters = gDirBetweenFilters + (double)menuGetSensitivity() * (gDirPreFilter - gDirBetweenFilters);
+		gDirBetweenFilters = gDirBetweenFilters + menuGetSensitivity() * (gDirPreFilter - gDirBetweenFilters);
 	} else {
 		gDirBetweenFilters = gDirPreFilter;
 	}
