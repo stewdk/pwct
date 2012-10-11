@@ -42,7 +42,7 @@
  *	Buddy Button Left				PJ0			Input
  *	Buddy Button Right				PJ1			Input
  *	Buddy Button Fifth				PJ2			Input
- *	Emergency Stop					PK2			Input		Normally closed
+ *	Emergency Stop					PK2			Input		Normally closed, debounce
  *	Omni+ On/Off Switch				PK6			Output
  *	Panel LA Up						PK0			Input
  *	Panel LA Down					PK3			Input
@@ -73,7 +73,6 @@ static uint8_t STUDENT_REVERSE;
 static uint8_t STUDENT_LEFT;
 static uint8_t STUDENT_RIGHT;
 static uint8_t STUDENT_FIFTH;
-static uint8_t PANEL_ESTOP; // E-stop: normally closed switch
 static uint8_t PANEL_LA_UP;
 static uint8_t PANEL_LA_DOWN;
 static uint8_t PANEL_BUMPER_OVERRIDE;
@@ -81,8 +80,8 @@ static uint8_t PROP_JOY_DETECT;
 static uint8_t INVERT_SWITCH;
 static uint8_t LIMIT_SWITCH;
 
-#define INPUT_COUNT 4
-static debounced_input gDebouncedInputs[INPUT_COUNT];
+#define DEBOUNCED_INPUT_COUNT 5
+static debounced_input gDebouncedInputs[DEBOUNCED_INPUT_COUNT];
 
 static volatile uint16_t gWiredPropJoySpeed;
 static volatile uint16_t gWiredPropJoyDirection;
@@ -141,23 +140,32 @@ static void setupEstopTimer()
 static void setupDebouncedInputs()
 {
 	//LCD Button 1 PQ0
-	gDebouncedInputs[0].port = &PORTQ;
-	gDebouncedInputs[0].pin_bm = PIN0_bm;
+#define DEBOUNCE_INDEX_LCD1 0
+	gDebouncedInputs[DEBOUNCE_INDEX_LCD1].port = &PORTQ;
+	gDebouncedInputs[DEBOUNCE_INDEX_LCD1].pin_bm = PIN0_bm;
 
 	//LCD Button 2 PQ1
-	gDebouncedInputs[1].port = &PORTQ;
-	gDebouncedInputs[1].pin_bm = PIN1_bm;
+#define DEBOUNCE_INDEX_LCD2 1
+	gDebouncedInputs[DEBOUNCE_INDEX_LCD2].port = &PORTQ;
+	gDebouncedInputs[DEBOUNCE_INDEX_LCD2].pin_bm = PIN1_bm;
 
 	//LCD Button 3 PQ2
-	gDebouncedInputs[2].port = &PORTQ;
-	gDebouncedInputs[2].pin_bm = PIN2_bm;
+#define DEBOUNCE_INDEX_LCD3 2
+	gDebouncedInputs[DEBOUNCE_INDEX_LCD3].port = &PORTQ;
+	gDebouncedInputs[DEBOUNCE_INDEX_LCD3].pin_bm = PIN2_bm;
 
 	//LCD Button 4 PQ3
-	gDebouncedInputs[3].port = &PORTQ;
-	gDebouncedInputs[3].pin_bm = PIN3_bm;
+#define DEBOUNCE_INDEX_LCD4 3
+	gDebouncedInputs[DEBOUNCE_INDEX_LCD4].port = &PORTQ;
+	gDebouncedInputs[DEBOUNCE_INDEX_LCD4].pin_bm = PIN3_bm;
+
+	//Panel E-stop
+#define DEBOUNCE_INDEX_ESTOP 4
+	gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].port = &PORTK;
+	gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].pin_bm = PIN2_bm;
 
 	int i;
-	for (i = 0; i < INPUT_COUNT; i++)
+	for (i = 0; i < DEBOUNCED_INPUT_COUNT; i++)
 	{
 		// Set as input
 		gDebouncedInputs[i].port->DIRCLR = gDebouncedInputs[i].pin_bm;
@@ -171,6 +179,11 @@ static void setupDebouncedInputs()
 		gDebouncedInputs[i].debounced_value = 1;
 		gDebouncedInputs[i].previous_debounced_value = 1;
 	}
+
+	// E-stop needs an initial value of 0 since it is a normally closed switch
+	gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].previous_values = 0;
+	gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].debounced_value = 0;
+	gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].previous_debounced_value = 0;
 }
 
 static void setupDebounceTimer()
@@ -195,7 +208,7 @@ void initPWCTio(void)
 	PORT_ConfigurePins( &PORTH, PIN6_bm | PIN7_bm,                     false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // BB fwd, BB rev
 	PORT_ConfigurePins( &PORTJ, 0xFF,                                  false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // remaining BB, switch joystick in
 	PORT_ConfigurePins( &PORTK, PIN0_bm | PIN1_bm | PIN3_bm | PIN7_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LA up, bumper override, LA down, Prop. Joy Detect
-	PORT_ConfigurePins( &PORTK, PIN2_bm,                               false, false, PORT_OPC_PULLUP_gc, PORT_ISC_FALLING_gc ); // e-stop button
+	PORT_ConfigurePins( &PORTK, PIN2_bm,                               false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // e-stop button
 	PORT_ConfigurePins( &PORTQ, PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm, false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LCD buttons
 	PORT_ConfigurePins( &PORTR, PIN0_bm | PIN1_bm,                     false, false, PORT_OPC_PULLUP_gc, PORT_ISC_BOTHEDGES_gc ); // LCD button, invert switch
 
@@ -232,7 +245,6 @@ void SampleInputs(void)
 	STUDENT_LEFT			= PORTJ.IN & PIN5_bm;
 	STUDENT_RIGHT			= PORTJ.IN & PIN6_bm;
 	STUDENT_FIFTH			= PORTJ.IN & PIN7_bm;
-	PANEL_ESTOP				= PORTK.IN & PIN2_bm;
 	PANEL_LA_UP				= PORTK.IN & PIN3_bm;
 	PANEL_LA_DOWN			= PORTK.IN & PIN0_bm;
 	PANEL_BUMPER_OVERRIDE	= PORTK.IN & PIN1_bm;
@@ -329,22 +341,22 @@ static uint8_t isInputFallingEdge(uint8_t i)
 
 uint8_t lcdUpFallingEdge(void)
 {
-	return isInputFallingEdge(3);
+	return isInputFallingEdge(DEBOUNCE_INDEX_LCD4);
 }
 
 uint8_t lcdDownFallingEdge(void)
 {
-	return isInputFallingEdge(2);
+	return isInputFallingEdge(DEBOUNCE_INDEX_LCD3);
 }
 
 uint8_t lcdRightFallingEdge(void)
 {
-	return isInputFallingEdge(0);
+	return isInputFallingEdge(DEBOUNCE_INDEX_LCD1);
 }
 
 uint8_t lcdLeftFallingEdge(void)
 {
-	return isInputFallingEdge(1);
+	return isInputFallingEdge(DEBOUNCE_INDEX_LCD2);
 }
 
 bool LimitSwitchPressed(void)
@@ -381,7 +393,7 @@ uint8_t ActuatorSwitchPressed(void)
 bool PanelEStopPressed(void)
 {
 	// normally closed switch
-	return PANEL_ESTOP;
+	return gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].debounced_value;
 }
 
 void PulsePGDTEstop(void)
@@ -415,10 +427,11 @@ ISR(ADCA_CH1_vect)
 	AVR_LEAVE_CRITICAL_REGION();
 }
 
+// Debounce timer ISR
 ISR(TCC1_CCA_vect)
 {
 	int i;
-	for (i = 0; i < INPUT_COUNT; i++)
+	for (i = 0; i < DEBOUNCED_INPUT_COUNT; i++)
 	{
 		gDebouncedInputs[i].previous_values = (gDebouncedInputs[i].previous_values << 1) | ((gDebouncedInputs[i].port->IN & gDebouncedInputs[i].pin_bm) ? 1 : 0);
 
