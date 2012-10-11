@@ -18,6 +18,7 @@ typedef struct {
 	volatile uint8_t previous_values;
 	volatile uint8_t debounced_value;
 	uint8_t previous_debounced_value;
+	uint16_t pressedCount;
 } debounced_input;
 
 void initPWCTio(void);
@@ -30,6 +31,7 @@ uint8_t lcdUpFallingEdge(void);
 uint8_t lcdDownFallingEdge(void);
 uint8_t lcdRightFallingEdge(void);
 uint8_t lcdLeftFallingEdge(void);
+uint8_t lcdLeftLongPress(void);
 
 bool LimitSwitchPressed(void);
 uint8_t ActuatorSwitchPressed(void);

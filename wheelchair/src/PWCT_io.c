@@ -175,9 +175,10 @@ static void setupDebouncedInputs()
 		gDebouncedInputs[i].port->PIN0CTRL = PORT_OPC_PULLUP_gc;
 
 		// Default values
-		gDebouncedInputs[i].previous_values = 0xFF;
+		gDebouncedInputs[i].previous_values = UINT8_MAX;
 		gDebouncedInputs[i].debounced_value = 1;
 		gDebouncedInputs[i].previous_debounced_value = 1;
+		gDebouncedInputs[i].pressedCount = 0;
 	}
 
 	// E-stop needs an initial value of 0 since it is a normally closed switch
@@ -331,12 +332,26 @@ uint16_t getWiredPropJoyDirection(void)
 static uint8_t isInputFallingEdge(uint8_t i)
 {
 	uint8_t isFallingEdge = 0;
+	AVR_ENTER_CRITICAL_REGION();
 	if (gDebouncedInputs[i].debounced_value == 0 && gDebouncedInputs[i].debounced_value != gDebouncedInputs[i].previous_debounced_value)
 	{
 		isFallingEdge = 1;
 	}
 	gDebouncedInputs[i].previous_debounced_value = gDebouncedInputs[i].debounced_value;
+	AVR_LEAVE_CRITICAL_REGION();
 	return isFallingEdge;
+}
+
+static uint8_t isInputLongPress(uint8_t i)
+{
+	uint8_t isLongPress = 0;
+	AVR_ENTER_CRITICAL_REGION();
+	if (gDebouncedInputs[i].pressedCount > 400 && gDebouncedInputs[i].pressedCount < UINT16_MAX) {
+		gDebouncedInputs[i].pressedCount = UINT16_MAX;
+		isLongPress = 1;
+	}
+	AVR_LEAVE_CRITICAL_REGION();
+	return isLongPress;
 }
 
 uint8_t lcdUpFallingEdge(void)
@@ -357,6 +372,11 @@ uint8_t lcdRightFallingEdge(void)
 uint8_t lcdLeftFallingEdge(void)
 {
 	return isInputFallingEdge(DEBOUNCE_INDEX_LCD2);
+}
+
+uint8_t lcdLeftLongPress(void)
+{
+	return isInputLongPress(DEBOUNCE_INDEX_LCD2);
 }
 
 bool LimitSwitchPressed(void)
@@ -435,13 +455,17 @@ ISR(TCC1_CCA_vect)
 	{
 		gDebouncedInputs[i].previous_values = (gDebouncedInputs[i].previous_values << 1) | ((gDebouncedInputs[i].port->IN & gDebouncedInputs[i].pin_bm) ? 1 : 0);
 
-		if (gDebouncedInputs[i].previous_values == 0xFF)
+		if (gDebouncedInputs[i].previous_values == UINT8_MAX)
 		{
 			gDebouncedInputs[i].debounced_value = 1;
+			gDebouncedInputs[i].pressedCount = 0;
 		}
 		else if (gDebouncedInputs[i].previous_values == 0)
 		{
 			gDebouncedInputs[i].debounced_value = 0;
+			if (gDebouncedInputs[i].pressedCount < UINT16_MAX - 1) {
+				gDebouncedInputs[i].pressedCount++;
+			}
 		}
 	}
 }
