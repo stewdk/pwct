@@ -6,6 +6,7 @@
  */ 
 
 #include <stdio.h>
+#include <string.h>
 #include <avr/eeprom.h>
 #include "../atmel/avr_compiler.h"
 #include "../atmel/wdt_driver.h"
@@ -13,6 +14,10 @@
 #include "PWCT_io.h"
 #include "lcd_driver.h"
 #include "motor_driver.h"
+
+uint8_t gWirelessTimeoutCount = 0;
+uint8_t gMotorsDisabled = 0;
+uint8_t gNameEditMode = 0;
 
 // Define the order of the menu options, zero-based
 #define MENU_OPTION_PROFILE 0
@@ -32,14 +37,6 @@
 // We must know how many menu options there are
 #define LAST_MENU_OPTION MENU_OPTION_PROP_AS_SWITCH
 
-
-uint8_t gWirelessTimeoutCount = 0;
-
-void incrementWirelessTimeout()
-{
-	gWirelessTimeoutCount++;
-}
-
 // EEPROM variables, RAM shadow variables, and sane initial values
 // Note: the initial values are only updated when programming the EEPROM memory (wheelchair.eep)
 
@@ -54,10 +51,10 @@ uint8_t eepromShadowCurrentProfile = 0;
 uint8_t EEMEM eepromMenuState = 0;
 uint8_t eepromShadowMenuState = 0;
 
-char EEMEM eepromProfileName[PROFILE_COUNT][17] = {"Profile 1", "Profile 2", "Profile 3", "Profile 4", "Profile 5",
+char EEMEM eepromProfileName[PROFILE_COUNT][LCD_NUM_CHARACTERS+1] = {"Profile 1", "Profile 2", "Profile 3", "Profile 4", "Profile 5",
 	"Profile 6", "Profile 7", "Profile 8", "Profile 9", "Profile 10", "Profile 11", "Profile 12", "Profile 13",
 	"Profile 14", "Profile 15", "Profile 16", "Profile 17", "Profile 18", "Profile 19", "Profile 20"};
-char currentProfileName[17];
+char currentProfileName[LCD_NUM_CHARACTERS+1];
 
 float EEMEM eepromFwdThrow[PROFILE_COUNT] = {1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5};
 float eepromShadowFwdThrow = 1.0;
@@ -118,7 +115,7 @@ void menuInit()
 		eepromCorrupt();
 	}
 	eepromShadowMenuState = eeprom_read_byte(&eepromMenuState);
-	eeprom_read_block(currentProfileName, eepromProfileName[eepromShadowCurrentProfile], 17);
+	eeprom_read_block(currentProfileName, eepromProfileName[eepromShadowCurrentProfile], LCD_NUM_CHARACTERS+1);
 	eepromShadowFwdThrow = eeprom_read_float(&eepromFwdThrow[eepromShadowCurrentProfile]);
 	eepromShadowRevThrow = eeprom_read_float(&eepromRevThrow[eepromShadowCurrentProfile]);
 	eepromShadowTurnThrow = eeprom_read_float(&eepromTurnThrow[eepromShadowCurrentProfile]);
@@ -135,6 +132,16 @@ void menuInit()
 	eepromShadowCenterDeadBand = eeprom_read_byte(&eepromCenterDeadBand[eepromShadowCurrentProfile]);
 	eepromShadowPropAsSwitch = eeprom_read_byte(&eepromPropAsSwitch[eepromShadowCurrentProfile]);
 	eepromShadowInvert = eeprom_read_byte(&eepromInvert[eepromShadowCurrentProfile]);
+}
+
+void incrementWirelessTimeout()
+{
+	gWirelessTimeoutCount++;
+}
+
+uint8_t menuGetMotorsDisabled()
+{
+	return gMotorsDisabled;
 }
 
 static void eepromUpdateByteSafe(uint8_t *eepromVariable, uint8_t *shadowVariable, uint8_t newValue)
@@ -164,6 +171,20 @@ static void eepromUpdateFloatSafe(float *eepromVariable, float *shadowVariable, 
 		eepromCorrupt();
 	} else {
 		*shadowVariable = newValue;
+	}
+}
+
+//void eeprom_update_block (const void *__src, void *__dst, size_t __n);
+static void eepromUpdateStringSafe(char *src, char *eepromDst)
+{
+	char readString[LCD_NUM_CHARACTERS+1];
+	eeprom_busy_wait();
+	eeprom_update_block(src, eepromDst, LCD_NUM_CHARACTERS+1);
+	printf("EEPROM written\n");
+	eeprom_busy_wait();
+	eeprom_read_block(readString, eepromDst, LCD_NUM_CHARACTERS+1);
+	if (strcmp(readString, src)) {
+		eepromCorrupt();
 	}
 }
 
@@ -248,24 +269,124 @@ uint8_t menuGetInvert(void)
 	return eepromShadowInvert;
 }
 
+uint8_t isValidChar(char c)
+{
+	uint8_t isValid = 0;
+	if (c == ' ') {
+		isValid = 1;
+	}
+	if (c >= '0' && c <= '9') {
+		isValid = 2;
+	}
+	if (c >= 'A' && c <= 'Z') {
+		isValid = 3;
+	}
+	if (c >= 'a' && c <= 'z') {
+		isValid = 4;
+	}
+	return isValid;
+}
+
 void menuUpdate(int16_t speed, int16_t dir)
 {
 	uint8_t up = lcdUpFallingEdge();
 	uint8_t down = lcdDownFallingEdge();
 	uint8_t right = lcdRightFallingEdge();
 	uint8_t left = lcdLeftFallingEdge();
+	uint8_t leftLongPress = lcdLeftLongPress();
+	static uint8_t cursorPosition = 0;
 
-	char lcdLine1[17];
-	char lcdLine2[17];
-	lcdLine1[16] = '\0';
-	lcdLine2[16] = '\0';
+	char lcdLine1[LCD_NUM_CHARACTERS+1];
+	char lcdLine2[LCD_NUM_CHARACTERS+1];
+	lcdLine1[LCD_NUM_CHARACTERS] = '\0';
+	lcdLine2[LCD_NUM_CHARACTERS] = '\0';
 
 	if (eepromShadowIsPlatformDown) {
 		sprintf(lcdLine1, "Platform down");
 		lcdLine2[0] = '\0';
 		lcdText(lcdLine1, lcdLine2, 0);
+		gMotorsDisabled = 1;
 		return;
 	}
+
+	if (eepromShadowMenuState == MENU_OPTION_PROFILE && leftLongPress) {
+		gNameEditMode = !gNameEditMode;
+
+		if (gNameEditMode) {
+			sprintf(lcdLine1, "Edit name");
+			sprintf(lcdLine2, "%s", currentProfileName);
+			lcdText(lcdLine1, lcdLine2, 1);
+
+			// Display on, LCD cursor on, blink off
+			lcdCommandBlocking(LCD_CMD_DISPLAY_ON_OFF | LCD_CMD_DISPLAY_ON_OFF_D_bm | LCD_CMD_DISPLAY_ON_OFF_C_bm);
+			lcdCommandBlocking(LCD_CMD_SET_DDRAM_ADDR | (LCD_DDRAM_ADDR_bm & LCD_LINE_2_START_ADDR));
+			cursorPosition = 0;
+		} else {
+			// Display on, LCD cursor off, blink off
+			lcdCommandBlocking(LCD_CMD_DISPLAY_ON_OFF | LCD_CMD_DISPLAY_ON_OFF_D_bm);
+
+			// Write to eeprom
+			eepromUpdateStringSafe(currentProfileName, eepromProfileName[eepromShadowCurrentProfile]);
+		}
+	}
+
+	if (gNameEditMode) {
+		gMotorsDisabled = 1;
+		if (!isValidChar(currentProfileName[cursorPosition])) {
+			currentProfileName[cursorPosition] = ' ';
+			currentProfileName[cursorPosition+1] = '\0';
+		}
+		if (left || right) {
+			if (left && cursorPosition > 0) {
+				cursorPosition--;
+			}
+			if (right && cursorPosition < LCD_NUM_CHARACTERS - 1) {
+				cursorPosition++;
+				if (!isValidChar(currentProfileName[cursorPosition])) {
+					currentProfileName[cursorPosition] = ' ';
+					currentProfileName[cursorPosition+1] = '\0';
+				}
+			}
+			// Change cursor position
+			lcdCommandBlocking((LCD_CMD_SET_DDRAM_ADDR | (LCD_DDRAM_ADDR_bm & LCD_LINE_2_START_ADDR)) + cursorPosition);
+		}
+		if (up || down) {
+			// Change letter
+			if (up) {
+				if (currentProfileName[cursorPosition] == ' ') {
+					currentProfileName[cursorPosition] = 'A';
+				} else if (currentProfileName[cursorPosition] == 'Z') {
+					currentProfileName[cursorPosition] = 'a';
+				} else if (currentProfileName[cursorPosition] == 'z') {
+					currentProfileName[cursorPosition] = '0';
+				} else if (currentProfileName[cursorPosition] == '9') {
+					currentProfileName[cursorPosition] = ' ';
+				} else {
+					currentProfileName[cursorPosition]++;
+				}
+			}
+			if (down) {
+				if (currentProfileName[cursorPosition] == ' ') {
+					currentProfileName[cursorPosition] = '9';
+				} else if (currentProfileName[cursorPosition] == '0') {
+					currentProfileName[cursorPosition] = 'z';
+				} else if (currentProfileName[cursorPosition] == 'a') {
+					currentProfileName[cursorPosition] = 'Z';
+				} else if (currentProfileName[cursorPosition] == 'A') {
+					currentProfileName[cursorPosition] = ' ';
+				} else {
+					currentProfileName[cursorPosition]--;
+				}
+			}
+			sprintf(lcdLine1, "Edit name");
+			sprintf(lcdLine2, "%s", currentProfileName);
+			lcdText(lcdLine1, lcdLine2, 1);
+			lcdCommandBlocking((LCD_CMD_SET_DDRAM_ADDR | (LCD_DDRAM_ADDR_bm & LCD_LINE_2_START_ADDR)) + cursorPosition);
+		}
+		return;
+	}
+
+	gMotorsDisabled = 0;
 
 	if (right)
 	{
@@ -285,11 +406,12 @@ void menuUpdate(int16_t speed, int16_t dir)
 	case MENU_OPTION_PROFILE:
 		if (up && eepromShadowCurrentProfile < PROFILE_COUNT - 1) {
 			eepromUpdateByteSafe(&eepromCurrentProfile, &eepromShadowCurrentProfile, eepromShadowCurrentProfile + 1);
+			menuInit();
 		}
 		if (down && eepromShadowCurrentProfile > 0) {
 			eepromUpdateByteSafe(&eepromCurrentProfile, &eepromShadowCurrentProfile, eepromShadowCurrentProfile - 1);
+			menuInit();
 		}
-		menuInit();
 		sprintf(lcdLine1, "Choose Profile");
 		sprintf(lcdLine2, "%s", currentProfileName);
 		break;

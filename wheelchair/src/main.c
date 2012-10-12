@@ -47,8 +47,8 @@ static void eStop(void)
 static void displayResetReason(double delayTime_ms)
 {
 	uint8_t status = RST.STATUS;
-	char lcdLine[17];
-	lcdLine[16] = '\0';
+	char lcdLine[LCD_NUM_CHARACTERS+1];
+	lcdLine[LCD_NUM_CHARACTERS] = '\0';
 	sprintf(lcdLine, "RST.STATUS=0x%02x", status);
 
 	RST.STATUS = status & 0x3F;

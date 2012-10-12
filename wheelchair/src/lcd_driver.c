@@ -17,7 +17,6 @@
 
 // 0.25 µs per tick
 #define LCD_TIMER_CLKSEL TC_CLKSEL_DIV8_gc
-#define LCD_NUM_CHARACTERS 16
 
 static volatile uint8_t gLCDState;
 static volatile uint8_t gLCDCharPosition;
@@ -29,6 +28,11 @@ static volatile char gLCDLine2[LCD_NUM_CHARACTERS + 1];
 static inline uint8_t lcdBusy(void)
 {
 	return gLCDState;
+}
+
+static void lcdBusyWait(void)
+{
+	do {} while (lcdBusy());
 }
 
 static inline void setTimerPeriod(uint16_t period)
@@ -103,8 +107,9 @@ static void lcdNibble(uint8_t data)
 	lcdEClr();
 }
 
-static void lcdCommand(uint8_t command)
+void lcdCommandBlocking(uint8_t command)
 {
+	lcdBusyWait();
 	lcdRSClr();
 	lcdNibble(command >> 4);
 	_delay_us(1);
@@ -203,10 +208,10 @@ void initLCDDriver(void)
 
 	//Now it's a 4-bit bus
 
-	lcdCommand(LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_N_bm); // 2-line LCD, 5x8
-	lcdCommand(LCD_CMD_DISPLAY_ON_OFF | LCD_CMD_DISPLAY_ON_OFF_D_bm); //Display ON
-	lcdCommand(LCD_CMD_ENTRY_MODE_SET | LCD_CMD_ENTRY_MODE_I_D_bm); //Cursor moves right
-	lcdCommand(LCD_CMD_CLEAR_DISPLAY); // Last thing to do before writing text
+	lcdCommandBlocking(LCD_CMD_FUNCTION_SET | LCD_CMD_FUNCTION_N_bm); // 2-line LCD, 5x8
+	lcdCommandBlocking(LCD_CMD_DISPLAY_ON_OFF | LCD_CMD_DISPLAY_ON_OFF_D_bm); //Display ON
+	lcdCommandBlocking(LCD_CMD_ENTRY_MODE_SET | LCD_CMD_ENTRY_MODE_I_D_bm); //Cursor moves right
+	lcdCommandBlocking(LCD_CMD_CLEAR_DISPLAY); // Last thing to do before writing text
 }
 
 ISR(TCE1_CCA_vect)

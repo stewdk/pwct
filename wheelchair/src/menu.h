@@ -9,6 +9,7 @@
 #define MENU_H_
 
 void menuInit();
+uint8_t menuGetMotorsDisabled();
 void menuUpdate(int16_t speed, int16_t dir);
 void menuPlatformDownPushed();
 void menuPlatformUpPushed();

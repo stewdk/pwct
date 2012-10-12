@@ -10,6 +10,8 @@
 
 // BEGIN HARDWARE SPECIFIC
 
+#define LCD_NUM_CHARACTERS 16
+
 // DB7 = PC7
 #define LCD_DB7_PORT PORTC
 #define LCD_DB7_PIN_bm PIN7_bm
@@ -109,5 +111,6 @@
 
 void initLCDDriver(void);
 void lcdText(const char *line1, const char *line2, uint8_t blocking);
+void lcdCommandBlocking(uint8_t command);
 
 #endif /* LCD_DRIVER_H_ */

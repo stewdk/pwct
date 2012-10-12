@@ -90,6 +90,11 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 		dir -= 118;
 	}
 
+	if (menuGetMotorsDisabled()) {
+		speed = 0;
+		dir = 0;
+	}
+
 	outerDeadBandLogic(speed, dir);
 	if (gIsOuterDeadBand && gIsOuterDeadBandTimeout) {
 		speed = 0;
