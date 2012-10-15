@@ -160,19 +160,22 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	// We don't want to get interrupted while accessing shared variables
 	AVR_ENTER_CRITICAL_REGION();
 
-	// Buddy buttons override
-	if (nordic_getStudentForward() != nordic_getStudentReverse()) {
-		if (nordic_getStudentForward()) {
-			speed = menuGetTopFwdSpeed();
-		} else if (nordic_getStudentReverse()) {
-			speed = -menuGetTopRevSpeed();
+	if (speed >= -1 && speed <= 1 &&
+		dir   >= -1 && dir   <= 1) {
+		// Buddy buttons only active if joystick not active
+		if (nordic_getStudentForward() != nordic_getStudentReverse()) {
+			if (nordic_getStudentForward()) {
+				speed = menuGetTopFwdSpeed();
+			} else if (nordic_getStudentReverse()) {
+				speed = -menuGetTopRevSpeed();
+			}
 		}
-	}
-	if (nordic_getStudentRight() != nordic_getStudentLeft()) {
-		if (nordic_getStudentRight()) {
-			dir = menuGetTopTurnSpeed();
-		} else if (nordic_getStudentLeft()) {
-			dir = -menuGetTopTurnSpeed();
+		if (nordic_getStudentRight() != nordic_getStudentLeft()) {
+			if (nordic_getStudentRight()) {
+				dir = menuGetTopTurnSpeed();
+			} else if (nordic_getStudentLeft()) {
+				dir = -menuGetTopTurnSpeed();
+			}
 		}
 	}
 

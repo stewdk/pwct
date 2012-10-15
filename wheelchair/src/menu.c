@@ -174,7 +174,6 @@ static void eepromUpdateFloatSafe(float *eepromVariable, float *shadowVariable, 
 	}
 }
 
-//void eeprom_update_block (const void *__src, void *__dst, size_t __n);
 static void eepromUpdateStringSafe(char *src, char *eepromDst)
 {
 	char readString[LCD_NUM_CHARACTERS+1];
