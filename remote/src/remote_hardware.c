@@ -52,30 +52,6 @@ void initHardware(void)
 	//enable pullups on button lines
 	PORTA |= _BV(PA0) | _BV(PA1) | _BV(PA2) | _BV(PA3) | _BV(PA4) | _BV(PA5);
 
-#ifdef INSTRUCTOR_REMOTE
-	//enable button interrupts to wake remote
-	//PA0	Button	PCINT0
-	//PA1	Up		PCINT1
-	//PA2	Down	PCINT2
-	PCMSK0 = _BV(PCINT0) | _BV(PCINT1) | _BV(PCINT2) | _BV(PCINT6) | _BV(PCINT7);
-	PCMSK1 = 0;
-	sbi(GIMSK, PCIE1);
-
-	//set up button debounce
-	//start timer /1024
-	TCCR1B = _BV(CS13) | _BV(CS11) | _BV(CS10);
-
-	//setup timeout timer
-	TCCR0A = _BV(TCW0);	//16 bit mode
-	TCNT0H = 0;
-	TCNT0L = 0;
-	TCCR0B = _BV(CS02) | _BV(CS00);	// clk/1024
-	OCR0B = (uint8_t)((MSEC_TIMEOUT & 0xFF00) >> 8);
-	OCR0A = (uint8_t)((MSEC_TIMEOUT & 0x00FF) >> 0);
-	TIMSK |= _BV(OCIE0A); //compare A interrupt enabled
-
-#endif // INSTRUCTOR_REMOTE
-
 //INIT ADC
 	// ADMUX = REFS1:0 ADLAR MUX4:0
 	// Select Vcc voltage reference, left adjust result

@@ -77,7 +77,7 @@ uint8_t nordic_getStudentReverse();
 uint8_t nordic_getStudentLeft();
 uint8_t nordic_getStudentRight();
 
-uint8_t nordic_getWirelessPropJoySpeed();
-uint8_t nordic_getWirelessPropJoyDirection();
+int8_t nordic_getWirelessPropJoySpeed();
+int8_t nordic_getWirelessPropJoyDirection();
 
 #endif /* NORDIC_DRIVER_H_ */

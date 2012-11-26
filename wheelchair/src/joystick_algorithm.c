@@ -80,16 +80,6 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	int16_t speed = nordic_getWirelessPropJoySpeed();
 	int16_t dir = nordic_getWirelessPropJoyDirection();
 
-	// fwd/rev offset
-	if (speed) {
-		speed -= 117;
-	}
-
-	// right/left offset
-	if (dir) {
-		dir -= 118;
-	}
-
 	if (menuGetMotorsDisabled()) {
 		speed = 0;
 		dir = 0;

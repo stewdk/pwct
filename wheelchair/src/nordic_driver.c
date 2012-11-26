@@ -26,8 +26,8 @@ static uint8_t gStudentForward;
 static uint8_t gStudentReverse;
 static uint8_t gStudentLeft;
 static uint8_t gStudentRight;
-static uint8_t gStudentSpeed;
-static uint8_t gStudentDirection;
+static int8_t gStudentSpeed;
+static int8_t gStudentDirection;
 static uint8_t gInstructorLAUp;
 static uint8_t gInstructorLADown;
 static uint8_t gInstructorEStop;
@@ -177,8 +177,8 @@ static void nordicSetup()
 	//EN_RXADDR_nReg        Default data pipe 0 and 1 enabled
 	//SETUP_AW_nReg         Default address width of 5 bytes
 
-	//Set RF Channel as 0x02
-	nordic_WriteRegister(RF_CH_nReg, 0x02, NULL);
+	//Set RF Channel as 0x7C
+	nordic_WriteRegister(RF_CH_nReg, 0x7C, NULL);
 
 	//Set output power 0dB, data rate of 1Mbps
 	nordic_WriteRegister(RF_SETUP_nReg, 0x07, NULL);
@@ -271,12 +271,12 @@ uint8_t nordic_getStudentRight()
 	return gStudentRight;
 }
 
-uint8_t nordic_getWirelessPropJoySpeed(void)
+int8_t nordic_getWirelessPropJoySpeed(void)
 {
 	return gStudentSpeed;
 }
 
-uint8_t nordic_getWirelessPropJoyDirection(void)
+int8_t nordic_getWirelessPropJoyDirection(void)
 {
 	return gStudentDirection;
 }
@@ -289,6 +289,8 @@ static void setVariables(uint8_t isTimeout)
 	if (LAST_PACKET.rxpipe == 0) {
 		gInstructorLAUp = (    (LAST_PACKET.data.array[0] & 0b00000010) >> 1 );
 		gInstructorLADown = (  (LAST_PACKET.data.array[0] & 0b00000100) >> 2 );
+		gStudentSpeed = LAST_PACKET.data.array[2];
+		gStudentDirection = LAST_PACKET.data.array[1];
 	}
 
 	if (LAST_PACKET.rxpipe == 1) {
@@ -313,22 +315,20 @@ ISR(PORTH_INT0_vect)
 {
 	uint8_t status;
 	uint8_t size = 0;
-	uint8_t data[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	uint8_t data[4] = {0,0,0,0};
 
 	//get status
 	nordic_SendCommand(NOP_nCmd, NULL, NULL, 0, &status);
 
 	if (status & 0x40) { // Data Ready RX FIFO
 
-		//reset packet receive time-out
-		TCF0.CNT = 0;
+		//get payload size
+		nordic_SendCommand(R_RX_PL_WID_nCmd, NULL, &size, 1, NULL);
+		if (size == sizeof(data)) {
+			//reset packet receive time-out
+			TCF0.CNT = 0;
 
-		//get latest packet
-		nordic_SendCommand(R_RX_PL_WID_nCmd, NULL, &size, 1, NULL);     //get payload size
-		if (size > sizeof(data)) {
-			size = sizeof(data);
-		}
-		if (size != 0) {
+			//get latest packet
 			nordic_SendCommand(R_RX_PAYLOAD_nCmd, NULL, data, size, NULL);  //get payload
 			LAST_PACKET.data.array[0] = data[0];
 			LAST_PACKET.data.array[1] = data[1];
@@ -341,8 +341,8 @@ ISR(PORTH_INT0_vect)
 
 		//update remote variables
 		setVariables(0);
-	} else {
-		printf("Status=%d\n", status);
+	//} else {
+	//	printf("Status=%d\n", status);
 	}
 	if (status & 0x20) { // Data Sent TX FIFO
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);

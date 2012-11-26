@@ -126,8 +126,8 @@ int8_t nordic_Initialize(uint8_t receiver)
 	//    todo: enable only 0 or 1 ?
 	//SETUP_AW_nReg		Default address width of 5 bytes
 
-	//Set RF Channel as 0x02
-	err = nordic_WriteRegister(RF_CH_nReg, 0x02, NULL);
+	//Set RF Channel as 0x7C
+	err = nordic_WriteRegister(RF_CH_nReg, 0x7C, NULL);
 
 	//Set output power 0dB, data rate of 1Mbps
 	err = nordic_WriteRegister(RF_SETUP_nReg, 0x07, NULL);
@@ -272,13 +272,9 @@ inline uint8_t nordic_IRQ(void)
 	}
 	if (status & 0x10) { // Maximum number of TX retransmits
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
-
-#ifdef STUDENT_JOYSTICK
 		setLED();
 	} else {
 		clrLED();
-#endif
-
 	}
 
 	//clear interrupts

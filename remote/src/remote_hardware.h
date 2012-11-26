@@ -15,13 +15,13 @@
 
 #ifndef INSTRUCTOR_REMOTE
 #ifndef STUDENT_JOYSTICK
-#error "Please #define either INSTRUCTOR_REMOTE or WIRELESS_JOYSTICK in remote_hardware.h"
+#error "Please #define either INSTRUCTOR_REMOTE or STUDENT_JOYSTICK in remote_hardware.h"
 #endif
 #endif
 
 #ifdef INSTRUCTOR_REMOTE
 #ifdef STUDENT_JOYSTICK
-#error "Please only #define one of INSTRUCTOR_REMOTE or WIRELESS_JOYSTICK in remote_hardware.h"
+#error "Please only #define one of INSTRUCTOR_REMOTE or STUDENT_JOYSTICK in remote_hardware.h"
 #endif
 #endif
 
