@@ -115,8 +115,8 @@ int8_t nordic_Initialize(uint8_t receiver)
 	err = nordic_WriteRegister(EN_AA_nReg, 0x03, NULL);
 
 #ifdef INSTRUCTOR_REMOTE
-	//enable auto retransmit, try 15 times with delay of 500us
-	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x1F, NULL);
+	//enable auto retransmit, try 13 times with delay of 250us
+	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x0D, NULL);
 #else //STUDENT_JOYSTICK
 	//enable auto retransmit, try 1 time with delay of 2500us
 	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x91, NULL);
@@ -214,30 +214,6 @@ void nordic_TransmitData(NORDIC_PACKET * packet)
     activeMode();
     _delay_us(50);
     standbyMode();
-}
-
-//powers down nordic chip
-void nordic_PowerDown(void)
-{
-	uint8_t configReg;
-	standbyMode();
-	nordic_ReadRegister(CONFIG_nReg, &configReg, NULL);
-	nordic_WriteRegister(CONFIG_nReg, configReg & 0b11111101, NULL);
-}
-
-//powers nordic up, sets active if nordic is configured as a receiver
-void nordic_PowerUp(void)
-{
-	uint8_t configReg;
-	standbyMode();
-	nordic_ReadRegister(CONFIG_nReg, &configReg, NULL);
-	nordic_WriteRegister(CONFIG_nReg, configReg | 0x2, NULL);
-	//wait for startup
-	_delay_us(1500);
-
-	if (configReg & 0x01) {
-		activeMode();	//start receiving
-	}
 }
 
 //Nordic IRQ pin interrupt

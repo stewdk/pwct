@@ -25,14 +25,9 @@
 #endif
 #endif
 
-uint8_t GetADC5(void);
-uint8_t GetADC6(void);
-uint8_t GetButton(void);
-uint8_t GetJoyState(void);
-uint8_t isTimeOut(void);
-void resetTimeOut(void);
-uint8_t hasButtonChanged(void);
-void clrButtonChanged(void);
+uint8_t getADC5(void);
+uint8_t getADC6(void);
+uint8_t getEStop(void);
 void initHardware(void);
 void setLED(void);
 void clrLED(void);

@@ -31,8 +31,8 @@ static inline uint8_t shearMapY(uint8_t x, uint8_t y) {
 static void sendData(void)
 {
 	NORDIC_PACKET testPacket;
-	int8_t x = GetADC5(); // Direction
-	int8_t y = GetADC6(); // Speed
+	int8_t x = getADC5(); // Direction
+	int8_t y = getADC6(); // Speed
 	memset(&testPacket, 0, sizeof(testPacket));
 
 #ifdef STUDENT_JOYSTICK
@@ -45,10 +45,15 @@ static void sendData(void)
 		testPacket.data.array[2] = 0;
 	}
 #else //INSTRUCTOR_REMOTE
-	// TODO check for overflow
-	testPacket.data.array[0] = GetButton() | GetJoyState();
-	testPacket.data.array[1] = -(x - 129);
-	testPacket.data.array[2] = y - 128;
+	testPacket.data.array[0] = getEStop();
+	if (x == 0 || x == 1) {
+		x = 127;
+	} else {
+		x = -(x - 129);
+	}
+	y = y - 128;
+	testPacket.data.array[1] = x;
+	testPacket.data.array[2] = y;
 #endif
 
 	nordic_TransmitData(&testPacket);

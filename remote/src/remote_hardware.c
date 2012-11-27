@@ -9,43 +9,18 @@
 #include <avr/interrupt.h>
 #include "remote_hardware.h"
 
-#define sbi(var, mask)   ((var) |= (uint8_t)(1 << mask))
-#define cbi(var, mask)   ((var) &= (uint8_t)~(1 << mask))
-
-//can't be more than 255
-#define MSEC_TO_WAIT 100
-#define MSEC_TIMEOUT 1000
-
 static uint8_t valueADC5;
 static uint8_t valueADC6;
-
-static uint8_t BUTTON_UP;
-static uint8_t BUTTON_DOWN;
-static uint8_t BUTTON_DISABLE;
-
-static uint8_t DEBOUNCE_DONE;
-static uint8_t TIMEOUT;
-
-static uint8_t JOY_STATE;
-
-static uint8_t BUTTON_START_STATE;
-
-static uint8_t BUTTON_CHANGED_FLAG = 0;
 
 void initHardware(void)
 {
 //Init LED
-	cbi(PORTB, PB3);
-	sbi(DDRB, PB3);
+	PORTB &= ~_BV(PB3);
+	DDRB |= _BV(PB3);
 
-//Init Buttons
+//Init ADC values
 	valueADC5 = 125;
 	valueADC6 = 125;
-	BUTTON_UP = 0;
-	BUTTON_DOWN = 0;
-	BUTTON_DISABLE = 0;
-	TIMEOUT = 0;
-	JOY_STATE = 0;
 
 	//set buttons pins as inputs
 	DDRA &= ~(_BV(PA0) | _BV(PA1) | _BV(PA2) | _BV(PA3) | _BV(PA4) | _BV(PA5));
@@ -69,41 +44,41 @@ void initHardware(void)
 	ADCSRA |= _BV(ADSC); //Start conversion
 }
 
-
 inline void setLED(void)
 {
-	sbi(PORTB, PB3);
+	PORTB |= _BV(PB3);
 }
 
 inline void clrLED(void)
 {
-	cbi(PORTB, PB3);
+	PORTB &= ~_BV(PB3);
 }
-
 
 inline void tglLED(void)
 {
 	if(PORTB & _BV(PB3)) {
-		cbi(PORTB, PB3);
+		PORTB &= ~_BV(PB3);
 	} else {
-		sbi(PORTB, PB3);
+		PORTB |= _BV(PB3);
 	}
 }
 
-
-uint8_t GetADC5(void)
+uint8_t getADC5(void)
 {
 	return valueADC5;	// Left/Right
 }
 
-uint8_t GetADC6(void)
+uint8_t getADC6(void)
 {
 	return valueADC6;	// Up/Down
 }
 
-uint8_t GetButton(void)
+uint8_t getEStop(void)
 {
-	return BUTTON_DISABLE | BUTTON_UP | BUTTON_DOWN;
+	if (PINA & _BV(PA0) && PINA & _BV(PA1))
+		return 0;
+	else
+		return 1;
 }
 
 #ifdef STUDENT_JOYSTICK
@@ -131,123 +106,19 @@ uint8_t getBuddyButtons()
 }
 #endif // STUDENT_JOYSTICK
 
-uint8_t GetJoyState(void)
-{
-	return JOY_STATE;
-}
-
-uint8_t hasButtonChanged(void)
-{
-	return BUTTON_CHANGED_FLAG;
-}
-
-void clrButtonChanged(void)
-{
-	BUTTON_CHANGED_FLAG = 0;
-}
-
 ISR(ADC_vect)
 {
 	if (ADMUX == ADMUX_ADC5_bm)
 	{
 		valueADC5 = ADCH;
 
-		if(valueADC5 > 170 && (JOY_STATE & 0b01100000) != 0b00100000) {	//left
-			JOY_STATE = (JOY_STATE & 0b10011111) | 0b00100000;
-			BUTTON_CHANGED_FLAG = 1;
-		}
-		else if(valueADC5 < 90 && (JOY_STATE & 0b01100000) != 0b01000000) {	//right
-			JOY_STATE = (JOY_STATE & 0b10011111) | 0b01000000;
-			BUTTON_CHANGED_FLAG = 1;
-		}
-		else if(valueADC5 >= 90 && valueADC5<=170 && (JOY_STATE & 0b01100000)) {
-			JOY_STATE = (JOY_STATE & 0b10011111) | 0b00000000;
-			BUTTON_CHANGED_FLAG = 1;
-		}
 		ADMUX = ADMUX_ADC6_bm;
 	}
 	else
 	{
 		valueADC6 = ADCH;
 
-		if(valueADC6 > 170 && (JOY_STATE & 0b00011000) != 0b00010000) {	//down
-			JOY_STATE = (JOY_STATE & 0b11100111) | 0b00010000;
-			BUTTON_CHANGED_FLAG = 1;
-		}
-		else if(valueADC6 < 90 && (JOY_STATE & 0b00011000) != 0b00001000) {	//up
-			JOY_STATE = (JOY_STATE & 0b11100111) | 0b00001000;
-			BUTTON_CHANGED_FLAG = 1;
-		}
-		else if(valueADC6 >= 90 && valueADC6<=170 && (JOY_STATE & 0b00011000)) {
-			JOY_STATE = (JOY_STATE & 0b11100111) | 0b00000000;
-			BUTTON_CHANGED_FLAG = 1;
-		}
 		ADMUX = ADMUX_ADC5_bm;
 	}
-	ADCSRA |= _BV(ADSC);//Start conversion
-}
-
-uint8_t isTimeOut(void)
-{
-	return TIMEOUT;
-}
-
-void resetTimeOut(void)
-{
-	TIMEOUT = 0;
-	TCNT0H = 0;
-	TCNT0L = 0;
-	TIMSK |= _BV(OCIE0A); //compare A interrupt enabled
-}
-
-ISR(PCINT_vect)
-{
-	uint8_t tempPINA;
-
-	tempPINA = PINA;
-
-	//This vector is here to wake unit up from sleep mode
-	DEBOUNCE_DONE =  0;
-
-	//set compare timer
-	OCR1A = MSEC_TO_WAIT + TCNT1;
-	TIMSK |= 0b01000000; //compare A interrupt enabled
-
-	BUTTON_START_STATE = 0;
-	BUTTON_START_STATE |= tempPINA & _BV(PA0);
-	BUTTON_START_STATE |= tempPINA & _BV(PA1);
-	BUTTON_START_STATE |= tempPINA & _BV(PA2);
-}
-
-ISR(TIMER1_COMPA_vect)
-{
-	uint8_t tempPINA;
-
-	tempPINA = PINA;
-
-	DEBOUNCE_DONE = 1;
-
-	TIMSK &= ~0b01000000; //compare A interrupt disabled
-
-	if( (tempPINA & _BV(PA0)) == (BUTTON_START_STATE & _BV(PA0))) {
-		BUTTON_DISABLE	= ~tempPINA & _BV(PA0);
-		//tglLED();
-	}
-
-	if( (tempPINA & _BV(PA1)) == (BUTTON_START_STATE & _BV(PA1))) {
-		BUTTON_UP		= ~tempPINA & _BV(PA1);
-	}
-
-	if( (tempPINA & _BV(PA2)) == (BUTTON_START_STATE & _BV(PA2))) {
-		BUTTON_DOWN		= ~tempPINA & _BV(PA2);
-	}
-
-	BUTTON_CHANGED_FLAG = 1;
-}
-
-//timeout ISR
-ISR(TIMER0_COMPA_vect)
-{
-	TIMEOUT = 1;
-	TIMSK &= ~_BV(OCIE0A); //compare A interrupt disabled
+	ADCSRA |= _BV(ADSC); //Start conversion
 }

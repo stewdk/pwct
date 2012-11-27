@@ -71,8 +71,6 @@ typedef struct {
 
 int8_t nordic_Initialize(uint8_t receiver);
 void nordic_TransmitData(NORDIC_PACKET * packet);
-void nordic_PowerDown(void);
-void nordic_PowerUp(void);
 
 //nordic_IRQ() is called from an ISR in nordic_hardware_specific.c
 //triggered by the falling edge of the IRQ pin from the nordic chip
