@@ -27,6 +27,8 @@ static volatile int16_t gDirPostFilter = 0;
 static volatile uint8_t gIsOuterDeadBand = 0;
 static volatile uint8_t gIsOuterDeadBandTimeout = 0;
 
+static volatile uint8_t gOverridden = 0;
+
 void joystickAlgorithmInit()
 {
 	// TCD1 is the timer acceleration and tremor filtering
@@ -44,9 +46,9 @@ static void outerDeadBandLogic(int16_t speed, int16_t dir)
 	double r = sqrt(speed * speed + dir * dir);
 
 	AVR_ENTER_CRITICAL_REGION();
-	if (menuGetOuterDeadBand() && (
+	if (menuGetOuterDeadBand(gOverridden) && (
 		(r > 60) ||
-		(gIsOuterDeadBand && gIsOuterDeadBandTimeout && (r > menuGetCenterDeadBand() + 5))
+		(gIsOuterDeadBand && gIsOuterDeadBandTimeout && (r > menuGetCenterDeadBand(gOverridden) + 5))
 		)) {
 		gIsOuterDeadBand = 1;
 	} else {
@@ -77,8 +79,17 @@ static void centerDeadBand(int16_t *x, int16_t *y, uint8_t deadBand)
 
 void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 {
-	int16_t speed = nordic_getWirelessPropJoySpeed();
-	int16_t dir = nordic_getWirelessPropJoyDirection();
+	int16_t speed = nordic_getInstructorSpeed();
+	int16_t dir = nordic_getInstructorDirection();
+
+	if (speed >= -1 && speed <= 1 &&
+		dir   >= -1 && dir   <= 1) {
+		gOverridden = 0;
+		speed = nordic_getWirelessPropJoySpeed();
+		dir = nordic_getWirelessPropJoyDirection();
+	} else {
+		gOverridden = 1;
+	}
 
 	if (menuGetMotorsDisabled()) {
 		speed = 0;
@@ -91,26 +102,26 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 		dir = 0;
 	}
 
-	if (menuGetInvert()) {
+	if (menuGetInvert(gOverridden)) {
 		speed = -speed;
 	}
 
 	// Proportional joystick as switch joystick
-	if (menuGetPropAsSwitch())
+	if (menuGetPropAsSwitch(gOverridden))
 	{
 		uint8_t threshold = 50;
 		if (speed > threshold) {
-			speed = menuGetTopFwdSpeed();
+			speed = menuGetTopFwdSpeed(gOverridden);
 		} else if (speed < -threshold) {
-			speed = -menuGetTopRevSpeed();
+			speed = -menuGetTopRevSpeed(gOverridden);
 		} else {
 			speed = 0;
 		}
 
 		if (dir > threshold) {
-			dir = menuGetTopTurnSpeed();
+			dir = menuGetTopTurnSpeed(gOverridden);
 		} else if (dir < -threshold) {
-			dir = -menuGetTopTurnSpeed();
+			dir = -menuGetTopTurnSpeed(gOverridden);
 		} else {
 			dir = 0;
 		}
@@ -118,32 +129,32 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	else
 	{
 		// apply center dead band
-		centerDeadBand(&dir, &speed, menuGetCenterDeadBand());
+		centerDeadBand(&dir, &speed, menuGetCenterDeadBand(gOverridden));
 
 		// fwd/rev throw
 		if (speed > 0) {
-			speed *= menuGetFwdThrow();
+			speed *= menuGetFwdThrow(gOverridden);
 		}
 		if (speed < 0) {
-			speed *= menuGetRevThrow();
+			speed *= menuGetRevThrow(gOverridden);
 		}
 		// turn throw
-		dir *= menuGetTurnThrow();
+		dir *= menuGetTurnThrow(gOverridden);
 
 		// Top speeds
-		if (speed > menuGetTopFwdSpeed()) {
+		if (speed > menuGetTopFwdSpeed(gOverridden)) {
 			// max forward speed
-			speed = menuGetTopFwdSpeed();
-		} else if (speed < -menuGetTopRevSpeed()) {
+			speed = menuGetTopFwdSpeed(gOverridden);
+		} else if (speed < -menuGetTopRevSpeed(gOverridden)) {
 			// max reverse speed
-			speed = -menuGetTopRevSpeed();
+			speed = -menuGetTopRevSpeed(gOverridden);
 		}
 
 		// max turn speed
-		if (dir > menuGetTopTurnSpeed()) {
-			dir = menuGetTopTurnSpeed();
-		} else if (dir < -menuGetTopTurnSpeed()) {
-			dir = -menuGetTopTurnSpeed();
+		if (dir > menuGetTopTurnSpeed(gOverridden)) {
+			dir = menuGetTopTurnSpeed(gOverridden);
+		} else if (dir < -menuGetTopTurnSpeed(gOverridden)) {
+			dir = -menuGetTopTurnSpeed(gOverridden);
 		}
 	}
 
@@ -151,20 +162,20 @@ void getProportionalMoveDirection(int16_t *returnSpeed, int16_t *returnDir)
 	AVR_ENTER_CRITICAL_REGION();
 
 	if (speed >= -1 && speed <= 1 &&
-		dir   >= -1 && dir   <= 1) {
+		dir   >= -1 && dir   <= 1 && !gOverridden) {
 		// Buddy buttons only active if joystick not active
 		if (nordic_getStudentForward() != nordic_getStudentReverse()) {
 			if (nordic_getStudentForward()) {
-				speed = menuGetTopFwdSpeed();
+				speed = menuGetTopFwdSpeed(gOverridden);
 			} else if (nordic_getStudentReverse()) {
-				speed = -menuGetTopRevSpeed();
+				speed = -menuGetTopRevSpeed(gOverridden);
 			}
 		}
 		if (nordic_getStudentRight() != nordic_getStudentLeft()) {
 			if (nordic_getStudentRight()) {
-				dir = menuGetTopTurnSpeed();
+				dir = menuGetTopTurnSpeed(gOverridden);
 			} else if (nordic_getStudentLeft()) {
-				dir = -menuGetTopTurnSpeed();
+				dir = -menuGetTopTurnSpeed(gOverridden);
 			}
 		}
 	}
@@ -192,7 +203,7 @@ ISR(TCD1_CCA_vect)
 
 	if (gIsOuterDeadBand) {
 		if (!gIsOuterDeadBandTimeout) {
-			uint8_t timeoutTime = menuGetOuterDeadBand() - 1;
+			uint8_t timeoutTime = menuGetOuterDeadBand(gOverridden) - 1;
 			if (timeoutTime == 0) {
 				gIsOuterDeadBandTimeout = 1;
 			} else if (timeoutTime > 0) {
@@ -215,13 +226,13 @@ ISR(TCD1_CCA_vect)
 	// Low-pass filter (aka Tremor Dampening aka Tremor Suppression aka Sensitivity)
 	if ((gSpeedPreFilter > 0 && gSpeedPreFilter > gSpeedBetweenFilters) ||
 		(gSpeedPreFilter < 0 && gSpeedPreFilter < gSpeedBetweenFilters)) {
-		gSpeedBetweenFilters = gSpeedBetweenFilters + menuGetSensitivity() * (gSpeedPreFilter - gSpeedBetweenFilters);
+		gSpeedBetweenFilters = gSpeedBetweenFilters + menuGetSensitivity(gOverridden) * (gSpeedPreFilter - gSpeedBetweenFilters);
 	} else {
 		gSpeedBetweenFilters = gSpeedPreFilter;
 	}
 	if ((gDirPreFilter > 0 && gDirPreFilter > gDirBetweenFilters) ||
 		(gDirPreFilter < 0 && gDirPreFilter < gDirBetweenFilters)) {
-		gDirBetweenFilters = gDirBetweenFilters + menuGetSensitivity() * (gDirPreFilter - gDirBetweenFilters);
+		gDirBetweenFilters = gDirBetweenFilters + menuGetSensitivity(gOverridden) * (gDirPreFilter - gDirBetweenFilters);
 	} else {
 		gDirBetweenFilters = gDirPreFilter;
 	}
@@ -229,7 +240,7 @@ ISR(TCD1_CCA_vect)
 	// Acceleration/deceleration: must wait X milliseconds before speed/dir is changed by 1
 	accelerationCount++;
 	decelerationCount++;
-	if (accelerationCount >= menuGetAcceleration())
+	if (accelerationCount >= menuGetAcceleration(gOverridden))
 	{
 		accelerationCount = 0;
 
@@ -247,7 +258,7 @@ ISR(TCD1_CCA_vect)
 		}
 	}
 
-	if (decelerationCount >= menuGetDeceleration())
+	if (decelerationCount >= menuGetDeceleration(gOverridden))
 	{
 		decelerationCount = 0;
 

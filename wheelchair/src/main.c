@@ -151,8 +151,7 @@ int main( void )
 		WDT_Reset();
 
 		getProportionalMoveDirection(&speed, &dir);
-		//menuUpdate(speed, dir);
-		menuUpdate(nordic_getWirelessPropJoySpeed(), nordic_getWirelessPropJoyDirection());
+		menuUpdate(speed, dir);
 
 		//check inputs for state changes
 		SampleInputs();

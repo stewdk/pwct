@@ -80,4 +80,7 @@ uint8_t nordic_getStudentRight();
 int8_t nordic_getWirelessPropJoySpeed();
 int8_t nordic_getWirelessPropJoyDirection();
 
+int8_t nordic_getInstructorSpeed();
+int8_t nordic_getInstructorDirection();
+
 #endif /* NORDIC_DRIVER_H_ */

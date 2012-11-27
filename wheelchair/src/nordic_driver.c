@@ -15,6 +15,9 @@
 #include "menu.h"
 #include "../atmel/avr_compiler.h"
 
+#define RXPIPE_INSTRUCTOR_REMOTE 0
+#define RXPIPE_STUDENT_JOYSTICK 1
+
 #define SPI_SS_bm   PIN4_bm
 #define SPI_MOSI_bm PIN5_bm
 #define SPI_MISO_bm PIN6_bm
@@ -31,6 +34,26 @@ static int8_t gStudentDirection;
 static uint8_t gInstructorLAUp;
 static uint8_t gInstructorLADown;
 static uint8_t gInstructorEStop;
+static int8_t gInstructorSpeed;
+static int8_t gInstructorDirection;
+static volatile uint8_t gIsInstructorTimeout;
+
+static void timeoutTimerSetup(TC0_t * tc)
+{
+	// Packet time-out counter
+	tc->CTRLA = TC_CLKSEL_OFF_gc;
+	// 1 tick = 32us
+	// 7812 ticks = 0.25s
+	tc->PER = 7812;
+	// Set timer to normal mode
+	tc->CTRLB = TC_WGMODE_NORMAL_gc;
+	// Set overflow interrupt (level med)
+	tc->INTCTRLA = TC_OVFINTLVL_MED_gc;
+	// reset packet watchdog timer
+	tc->CNT = 0;
+	// start timer
+	tc->CTRLA = TC_CLKSEL_DIV1024_gc;
+}
 
 static inline void hardwareSetup()
 {
@@ -56,19 +79,8 @@ static inline void hardwareSetup()
 	// Enable med level interrupt
 	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 
-	// Packet time-out counter
-	TCF0.CTRLA = TC_CLKSEL_OFF_gc;
-	// 1 tick = 32us
-	// 7812 ticks = 0.25s
-	TCF0.PER = 7812;
-	// Set timer to normal mode
-	TCF0.CTRLB = TC_WGMODE_NORMAL_gc;
-	// Set overflow interrupt (level med)
-	TCF0.INTCTRLA = TC_OVFINTLVL_MED_gc;
-	// reset packet watchdog timer
-	TCF0.CNT = 0;
-	// start timer
-	TCF0.CTRLA = TC_CLKSEL_DIV1024_gc;
+	timeoutTimerSetup(&TCD0);
+	timeoutTimerSetup(&TCF0);
 }
 
 // CS line must be pulled low before calling this function and released when finished
@@ -234,6 +246,9 @@ void nordic_Initialize()
 	gInstructorLAUp = 0;
 	gInstructorLADown = 0;
 	gInstructorEStop = 0;
+	gInstructorSpeed = 0;
+	gInstructorDirection = 0;
+	gIsInstructorTimeout = 0;
 }
 
 uint8_t nordic_getInstructorEStop()
@@ -281,19 +296,29 @@ int8_t nordic_getWirelessPropJoyDirection(void)
 	return gStudentDirection;
 }
 
+int8_t nordic_getInstructorSpeed()
+{
+	return gInstructorSpeed;
+}
+
+int8_t nordic_getInstructorDirection()
+{
+	return gInstructorDirection;
+}
+
 static void setVariables(uint8_t isTimeout)
 {
 	if ((LAST_PACKET.data.array[0] & 0b00000001) >> 0 ) {
 		gInstructorEStop = 1;
 	}
-	if (LAST_PACKET.rxpipe == 0) {
+	if (LAST_PACKET.rxpipe == RXPIPE_INSTRUCTOR_REMOTE) {
 		gInstructorLAUp = (    (LAST_PACKET.data.array[0] & 0b00000010) >> 1 );
 		gInstructorLADown = (  (LAST_PACKET.data.array[0] & 0b00000100) >> 2 );
-		gStudentSpeed = LAST_PACKET.data.array[2];
-		gStudentDirection = LAST_PACKET.data.array[1];
+		gInstructorSpeed = LAST_PACKET.data.array[2];
+		gInstructorDirection = LAST_PACKET.data.array[1];
 	}
 
-	if (LAST_PACKET.rxpipe == 1) {
+	if (LAST_PACKET.rxpipe == RXPIPE_STUDENT_JOYSTICK) { // Student joystick
 		gStudentForward = (  (LAST_PACKET.data.array[0] & 0b00001000) >> 3 );
 		gStudentReverse = (  (LAST_PACKET.data.array[0] & 0b00010000) >> 4 );
 		gStudentLeft = (     (LAST_PACKET.data.array[0] & 0b00100000) >> 5 );
@@ -325,9 +350,6 @@ ISR(PORTH_INT0_vect)
 		//get payload size
 		nordic_SendCommand(R_RX_PL_WID_nCmd, NULL, &size, 1, NULL);
 		if (size == sizeof(data)) {
-			//reset packet receive time-out
-			TCF0.CNT = 0;
-
 			//get latest packet
 			nordic_SendCommand(R_RX_PAYLOAD_nCmd, NULL, data, size, NULL);  //get payload
 			LAST_PACKET.data.array[0] = data[0];
@@ -335,12 +357,23 @@ ISR(PORTH_INT0_vect)
 			LAST_PACKET.data.array[2] = data[2];
 			LAST_PACKET.data.array[3] = data[3];
 			LAST_PACKET.rxpipe = (status & 0x0E) >> 1;
+
+			//reset packet receive time-out
+			if (LAST_PACKET.rxpipe == RXPIPE_INSTRUCTOR_REMOTE) {
+				TCD0.CNT = 0;
+				gIsInstructorTimeout = 0;
+			}
+			if (LAST_PACKET.rxpipe == RXPIPE_STUDENT_JOYSTICK) {
+				TCF0.CNT = 0;
+			}
 		}
 		//clear fifo
 		nordic_SendCommand(FLUSH_RX_nCmd, NULL, NULL, 0, NULL);
 
 		//update remote variables
-		setVariables(0);
+		if (!gIsInstructorTimeout) {
+			setVariables(0);
+		}
 	//} else {
 	//	printf("Status=%d\n", status);
 	}
@@ -355,13 +388,25 @@ ISR(PORTH_INT0_vect)
 	nordic_WriteRegister(STATUS_nReg, status & 0x70, NULL);
 }
 
+ISR(TCD0_OVF_vect)	//packet receive time-out
+{
+	gIsInstructorTimeout = 1;
+	LAST_PACKET.data.array[0] = 0;
+	LAST_PACKET.data.array[1] = 0;
+	LAST_PACKET.data.array[2] = 0;
+	LAST_PACKET.data.array[3] = 0;
+	LAST_PACKET.rxpipe = RXPIPE_INSTRUCTOR_REMOTE;
+	setVariables(1);
+	incrementWirelessTimeout();
+}
+
 ISR(TCF0_OVF_vect)	//packet receive time-out
 {
 	LAST_PACKET.data.array[0] = 0;
 	LAST_PACKET.data.array[1] = 0;
 	LAST_PACKET.data.array[2] = 0;
 	LAST_PACKET.data.array[3] = 0;
-	LAST_PACKET.rxpipe = 0;
+	LAST_PACKET.rxpipe = RXPIPE_STUDENT_JOYSTICK;
 	setVariables(1);
 	incrementWirelessTimeout();
 }

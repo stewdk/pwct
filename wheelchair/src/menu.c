@@ -203,69 +203,108 @@ uint8_t menuGetIsPlatformDown() {
 	return eepromShadowIsPlatformDown;
 }
 
-float menuGetFwdThrow(void)
+float menuGetFwdThrow(uint8_t overridden)
 {
-	return eepromShadowFwdThrow;
+	if (overridden)
+		return 0.8;
+	else
+		return eepromShadowFwdThrow;
 }
 
-float menuGetRevThrow(void)
+float menuGetRevThrow(uint8_t overridden)
 {
-	return eepromShadowRevThrow;
+	if (overridden)
+		return 0.6;
+	else
+		return eepromShadowRevThrow;
 }
 
-float menuGetTurnThrow(void)
+float menuGetTurnThrow(uint8_t overridden)
 {
-	return eepromShadowTurnThrow;
+	if (overridden)
+		return 0.4;
+	else
+		return eepromShadowTurnThrow;
 }
 
-uint8_t menuGetTopFwdSpeed(void)
+uint8_t menuGetTopFwdSpeed(uint8_t overridden)
 {
-	return eepromShadowTopFwdSpeed;
+	if (overridden)
+		return 125;
+	else
+		return eepromShadowTopFwdSpeed;
 }
 
-uint8_t menuGetTopRevSpeed(void)
+uint8_t menuGetTopRevSpeed(uint8_t overridden)
 {
-	return eepromShadowTopRevSpeed;
+	if (overridden)
+		return 60;
+	else
+		return eepromShadowTopRevSpeed;
 }
 
-uint8_t menuGetTopTurnSpeed(void)
+uint8_t menuGetTopTurnSpeed(uint8_t overridden)
 {
-	return eepromShadowTopTurnSpeed;
+	if (overridden)
+		return 45;
+	else
+		return eepromShadowTopTurnSpeed;
 }
 
-double menuGetSensitivity(void)
+double menuGetSensitivity(uint8_t overridden)
 {
-	return gSensitivityMap[eepromShadowSensitivity];
+	if (overridden)
+		return 0.005;
+	else
+		return gSensitivityMap[eepromShadowSensitivity];
 }
 
-uint8_t menuGetAcceleration(void)
+uint8_t menuGetAcceleration(uint8_t overridden)
 {
-	return eepromShadowAcceleration;
+	if (overridden)
+		return 16;
+	else
+		return eepromShadowAcceleration;
 }
 
-uint8_t menuGetDeceleration(void)
+uint8_t menuGetDeceleration(uint8_t overridden)
 {
-	return eepromShadowDeceleration;
+	if (overridden)
+		return 12;
+	else
+		return eepromShadowDeceleration;
 }
 
-uint8_t menuGetOuterDeadBand(void)
+uint8_t menuGetOuterDeadBand(uint8_t overridden)
 {
-	return eepromShadowOuterDeadBand;
+	if (overridden)
+		return 0;
+	else
+		return eepromShadowOuterDeadBand;
 }
 
-uint8_t menuGetCenterDeadBand(void)
+uint8_t menuGetCenterDeadBand(uint8_t overridden)
 {
-	return eepromShadowCenterDeadBand;
+	if (overridden)
+		return 2;
+	else
+		return eepromShadowCenterDeadBand;
 }
 
-uint8_t menuGetPropAsSwitch(void)
+uint8_t menuGetPropAsSwitch(uint8_t overridden)
 {
-	return eepromShadowPropAsSwitch;
+	if (overridden)
+		return 0;
+	else
+		return eepromShadowPropAsSwitch;
 }
 
-uint8_t menuGetInvert(void)
+uint8_t menuGetInvert(uint8_t overridden)
 {
-	return eepromShadowInvert;
+	if (overridden)
+		return 0;
+	else
+		return eepromShadowInvert;
 }
 
 uint8_t isValidChar(char c)
