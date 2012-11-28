@@ -25,9 +25,18 @@
 #endif
 #endif
 
+typedef struct {
+	volatile uint8_t *pin;
+	uint8_t pin_bm;
+	volatile uint8_t previous_values;
+	volatile uint8_t debounced_value;
+} debounced_input;
+
 uint8_t getADC5(void);
 uint8_t getADC6(void);
+#ifdef INSTRUCTOR_REMOTE
 uint8_t getEStop(void);
+#endif // INSTRUCTOR_REMOTE
 void initHardware(void);
 void setLED(void);
 void clrLED(void);

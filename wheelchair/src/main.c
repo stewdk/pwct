@@ -34,12 +34,12 @@
 #include "joystick_algorithm.h"
 //#include "test.h"
 
-static void eStop(void)
+static void eStop(const char *estopText)
 {
 	motorEStop();
 	while (1)
 	{
-		lcdText("E-stop", "Ver. " __DATE__, 0);
+		lcdText(estopText, "Ver. " __DATE__, 0);
 		WDT_Reset();
 	}
 }
@@ -158,8 +158,10 @@ int main( void )
 
 		actuatorSwitchState = ActuatorSwitchPressed();
 
-		if (PanelEStopPressed() || nordic_getInstructorEStop()) {
-			eStop();
+		if (nordic_getInstructorEStop()) {
+			eStop("Remote E-stop");
+		} else if (PanelEStopPressed()) {
+			eStop("Panel E-stop");
 		} else if (menuGetIsPlatformDown() || ((state == IDLE || state == LOAD) && actuatorSwitchState)) {
 			state = LOAD;
 		} else if (!menuGetIsPlatformDown() && (speed != 0 || dir != 0)) {

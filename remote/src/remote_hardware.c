@@ -12,6 +12,45 @@
 static uint8_t valueADC5;
 static uint8_t valueADC6;
 
+#ifdef INSTRUCTOR_REMOTE
+#define DEBOUNCED_INPUT_COUNT 1
+static debounced_input gDebouncedInputs[DEBOUNCED_INPUT_COUNT];
+
+static void setupDebouncedInputs()
+{
+	// Assumption: pins are already set as input and pull-ups enabled
+
+	//E-stop button
+	#define DEBOUNCE_INDEX_ESTOP 0
+	gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].pin = &PINA;
+	gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].pin_bm = _BV(PA1);
+
+	int i;
+	for (i = 0; i < DEBOUNCED_INPUT_COUNT; i++)
+	{
+		// Default values
+		gDebouncedInputs[i].previous_values = UINT8_MAX;
+		gDebouncedInputs[i].debounced_value = 1;
+	}
+}
+
+static void setupDebounceTimer()
+{
+	//TCCR0A: TCW0 ICEN0 ICNC0 ICES0 ACIC0 - - CTC0
+	TCCR0A = _BV(CTC0);
+
+	// Prescaler = 64
+	//TCCR0B: - - - TSM PSR0 CS02 CS01 CS00
+	TCCR0B = _BV(CS01) | _BV(CS00);
+
+	// Goal: interrupt every 5 milliseconds
+	OCR0A = 78;
+
+	//TIMSK: OCIE1D OCIE1A OCIE1B OCIE0A OCIE0B TOIE1 TOIE0 TICIE0
+	TIMSK |= _BV(OCIE0A);
+}
+#endif // INSTRUCTOR_REMOTE
+
 void initHardware(void)
 {
 //Init LED
@@ -26,6 +65,11 @@ void initHardware(void)
 	DDRA &= ~(_BV(PA0) | _BV(PA1) | _BV(PA2) | _BV(PA3) | _BV(PA4) | _BV(PA5));
 	//enable pullups on button lines
 	PORTA |= _BV(PA0) | _BV(PA1) | _BV(PA2) | _BV(PA3) | _BV(PA4) | _BV(PA5);
+
+#ifdef INSTRUCTOR_REMOTE
+	setupDebouncedInputs();
+	setupDebounceTimer();
+#endif // INSTRUCTOR_REMOTE
 
 //INIT ADC
 	// ADMUX = REFS1:0 ADLAR MUX4:0
@@ -73,13 +117,12 @@ uint8_t getADC6(void)
 	return valueADC6;	// Up/Down
 }
 
+#ifdef INSTRUCTOR_REMOTE
 uint8_t getEStop(void)
 {
-	if (PINA & _BV(PA0) && PINA & _BV(PA1))
-		return 0;
-	else
-		return 1;
+	return !gDebouncedInputs[DEBOUNCE_INDEX_ESTOP].debounced_value;
 }
+#endif // INSTRUCTOR_REMOTE
 
 #ifdef STUDENT_JOYSTICK
 uint8_t isJoystickEnabled()
@@ -122,3 +165,24 @@ ISR(ADC_vect)
 	}
 	ADCSRA |= _BV(ADSC); //Start conversion
 }
+
+#ifdef INSTRUCTOR_REMOTE
+// Debounce timer ISR
+ISR(TIMER0_COMPA_vect)
+{
+	int i;
+	for (i = 0; i < DEBOUNCED_INPUT_COUNT; i++)
+	{
+		gDebouncedInputs[i].previous_values = (gDebouncedInputs[i].previous_values << 1) | ((*(gDebouncedInputs[i].pin) & gDebouncedInputs[i].pin_bm) ? 1 : 0);
+
+		if (gDebouncedInputs[i].previous_values == UINT8_MAX)
+		{
+			gDebouncedInputs[i].debounced_value = 1;
+		}
+		else if (gDebouncedInputs[i].previous_values == 0)
+		{
+			gDebouncedInputs[i].debounced_value = 0;
+		}
+	}
+}
+#endif // INSTRUCTOR_REMOTE
