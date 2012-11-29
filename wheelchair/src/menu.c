@@ -40,7 +40,7 @@ uint8_t gNameEditMode = 0;
 // EEPROM variables, RAM shadow variables, and sane initial values
 // Note: the initial values are only updated when programming the EEPROM memory (wheelchair.eep)
 
-#define PROFILE_COUNT 20
+#define PROFILE_COUNT 21
 
 uint8_t EEMEM eepromIsPlatformDown = 0;
 uint8_t eepromShadowIsPlatformDown = 0;
@@ -53,48 +53,61 @@ uint8_t eepromShadowMenuState = 0;
 
 char EEMEM eepromProfileName[PROFILE_COUNT][LCD_NUM_CHARACTERS+1] = {"Profile 1", "Profile 2", "Profile 3", "Profile 4", "Profile 5",
 	"Profile 6", "Profile 7", "Profile 8", "Profile 9", "Profile 10", "Profile 11", "Profile 12", "Profile 13",
-	"Profile 14", "Profile 15", "Profile 16", "Profile 17", "Profile 18", "Profile 19", "Profile 20"};
+	"Profile 14", "Profile 15", "Profile 16", "Profile 17", "Profile 18", "Profile 19", "Profile 20", "Remote override"};
 char currentProfileName[LCD_NUM_CHARACTERS+1];
 
-float EEMEM eepromFwdThrow[PROFILE_COUNT] = {1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5};
+float EEMEM eepromFwdThrow[PROFILE_COUNT] = {1.0, 1.0, 2.0, 1.0, 1.0, 0.65, 0.75, 1.0, 1.05, 1.0, 0.8, 1.0, 1.05, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 0.8};
 float eepromShadowFwdThrow = 1.0;
+float eepromShadowOverrideFwdThrow = 0.8;
 
-float EEMEM eepromRevThrow[PROFILE_COUNT] = {0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.0};
+float EEMEM eepromRevThrow[PROFILE_COUNT] = {0.75, 0.8, 0.8, 0.8, 0.8, 0.8, 0.75, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.0, 0.6};
 float eepromShadowRevThrow = 0.8;
+float eepromShadowOverrideRevThrow = 0.6;
 
-float EEMEM eepromTurnThrow[PROFILE_COUNT] = {0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.8};
+float EEMEM eepromTurnThrow[PROFILE_COUNT] = {0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.85, 0.6, 0.55, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.8, 0.4};
 float eepromShadowTurnThrow = 0.6;
+float eepromShadowOverrideTurnThrow = 0.4;
 
-uint8_t EEMEM eepromTopFwdSpeed[PROFILE_COUNT] = {50, 50, 70, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 125};
+uint8_t EEMEM eepromTopFwdSpeed[PROFILE_COUNT] = {40, 40, 35, 35, 45, 90, 15, 35, 45, 40, 45, 25, 50, 50, 50, 50, 50, 50, 50, 125, 50};
 uint8_t eepromShadowTopFwdSpeed = 50;
+uint8_t eepromShadowOverrideTopFwdSpeed = 50;
 
-uint8_t EEMEM eepromTopRevSpeed[PROFILE_COUNT] = {35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 50};
+uint8_t EEMEM eepromTopRevSpeed[PROFILE_COUNT] = {25, 35, 30, 20, 20, 35, 40, 35, 25, 35, 35, 35, 30, 35, 35, 35, 35, 35, 35, 50, 35};
 uint8_t eepromShadowTopRevSpeed = 35;
+uint8_t eepromShadowOverrideTopRevSpeed = 35;
 
-uint8_t EEMEM eepromTopTurnSpeed[PROFILE_COUNT] = {20, 20, 35, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 35};
+uint8_t EEMEM eepromTopTurnSpeed[PROFILE_COUNT] = {25, 25, 45, 30, 35, 45, 25, 35, 35, 30, 25, 35, 25, 30, 20, 20, 20, 20, 20, 35, 35};
 uint8_t eepromShadowTopTurnSpeed = 20;
+uint8_t eepromShadowOverrideTopTurnSpeed = 35;
 
-uint8_t EEMEM eepromSensitivity[PROFILE_COUNT] = {7, 3, 9, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 7};
+uint8_t EEMEM eepromSensitivity[PROFILE_COUNT] = {9, 7, 4, 8, 5, 8, 8, 7, 6, 5, 6, 6, 7, 9, 3, 3, 3, 3, 3, 7, 7};
 uint8_t eepromShadowSensitivity = 3;
+uint8_t eepromShadowOverrideSensitivity = 7;
 static const double gSensitivityMap[10] = {0.0001, 0.000167, 0.000278, 0.000463, 0.000772, 0.00129, 0.00214, 0.00357, 0.01, 0.5};
 
-uint8_t EEMEM eepromAcceleration[PROFILE_COUNT] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
+uint8_t EEMEM eepromAcceleration[PROFILE_COUNT] = {16, 8, 16, 8, 4, 4, 4, 8, 8, 16, 4, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
 uint8_t eepromShadowAcceleration = 16;
+uint8_t eepromShadowOverrideAcceleration = 16;
 
-uint8_t EEMEM eepromDeceleration[PROFILE_COUNT] = {12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12};
+uint8_t EEMEM eepromDeceleration[PROFILE_COUNT] = {12, 12, 12, 12, 12, 12, 12, 12, 8, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12};
 uint8_t eepromShadowDeceleration = 12;
+uint8_t eepromShadowOverrideDeceleration = 12;
 
-uint8_t EEMEM eepromOuterDeadBand[PROFILE_COUNT] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t EEMEM eepromOuterDeadBand[PROFILE_COUNT] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t eepromShadowOuterDeadBand = 0;
+uint8_t eepromShadowOverrideOuterDeadBand = 0;
 
-uint8_t EEMEM eepromCenterDeadBand[PROFILE_COUNT] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
+uint8_t EEMEM eepromCenterDeadBand[PROFILE_COUNT] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
 uint8_t eepromShadowCenterDeadBand = 2;
+uint8_t eepromShadowOverrideCenterDeadBand = 2;
 
-uint8_t EEMEM eepromPropAsSwitch[PROFILE_COUNT] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t EEMEM eepromPropAsSwitch[PROFILE_COUNT] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t eepromShadowPropAsSwitch = 0;
+uint8_t eepromShadowOverridePropAsSwitch = 0;
 
-uint8_t EEMEM eepromInvert[PROFILE_COUNT] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t EEMEM eepromInvert[PROFILE_COUNT] = {0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t eepromShadowInvert = 0;
+uint8_t eepromShadowOverrideInvert = 0;
 
 static void eepromCorrupt()
 {
@@ -116,22 +129,48 @@ void menuInit()
 	}
 	eepromShadowMenuState = eeprom_read_byte(&eepromMenuState);
 	eeprom_read_block(currentProfileName, eepromProfileName[eepromShadowCurrentProfile], LCD_NUM_CHARACTERS+1);
+
 	eepromShadowFwdThrow = eeprom_read_float(&eepromFwdThrow[eepromShadowCurrentProfile]);
+	eepromShadowOverrideFwdThrow = eeprom_read_float(&eepromFwdThrow[PROFILE_COUNT-1]);
+
 	eepromShadowRevThrow = eeprom_read_float(&eepromRevThrow[eepromShadowCurrentProfile]);
+	eepromShadowOverrideRevThrow = eeprom_read_float(&eepromRevThrow[PROFILE_COUNT-1]);
+
 	eepromShadowTurnThrow = eeprom_read_float(&eepromTurnThrow[eepromShadowCurrentProfile]);
+	eepromShadowOverrideTurnThrow = eeprom_read_float(&eepromTurnThrow[PROFILE_COUNT-1]);
+
 	eepromShadowTopFwdSpeed = eeprom_read_byte(&eepromTopFwdSpeed[eepromShadowCurrentProfile]);
+	eepromShadowOverrideTopFwdSpeed = eeprom_read_byte(&eepromTopFwdSpeed[PROFILE_COUNT-1]);
+
 	eepromShadowTopRevSpeed = eeprom_read_byte(&eepromTopRevSpeed[eepromShadowCurrentProfile]);
+	eepromShadowOverrideTopRevSpeed = eeprom_read_byte(&eepromTopRevSpeed[PROFILE_COUNT-1]);
+
 	eepromShadowTopTurnSpeed = eeprom_read_byte(&eepromTopTurnSpeed[eepromShadowCurrentProfile]);
+	eepromShadowOverrideTopTurnSpeed = eeprom_read_byte(&eepromTopTurnSpeed[PROFILE_COUNT-1]);
+
 	eepromShadowSensitivity = eeprom_read_byte(&eepromSensitivity[eepromShadowCurrentProfile]);
 	if (eepromShadowSensitivity >= 10) {
 		eepromCorrupt();
 	}
+	eepromShadowOverrideSensitivity = eeprom_read_byte(&eepromSensitivity[PROFILE_COUNT-1]);
+
 	eepromShadowAcceleration = eeprom_read_byte(&eepromAcceleration[eepromShadowCurrentProfile]);
+	eepromShadowOverrideAcceleration = eeprom_read_byte(&eepromAcceleration[PROFILE_COUNT-1]);
+
 	eepromShadowDeceleration = eeprom_read_byte(&eepromDeceleration[eepromShadowCurrentProfile]);
+	eepromShadowOverrideDeceleration = eeprom_read_byte(&eepromDeceleration[PROFILE_COUNT-1]);
+
 	eepromShadowOuterDeadBand = eeprom_read_byte(&eepromOuterDeadBand[eepromShadowCurrentProfile]);
+	eepromShadowOverrideOuterDeadBand = eeprom_read_byte(&eepromOuterDeadBand[PROFILE_COUNT-1]);
+
 	eepromShadowCenterDeadBand = eeprom_read_byte(&eepromCenterDeadBand[eepromShadowCurrentProfile]);
+	eepromShadowOverrideCenterDeadBand = eeprom_read_byte(&eepromCenterDeadBand[PROFILE_COUNT-1]);
+
 	eepromShadowPropAsSwitch = eeprom_read_byte(&eepromPropAsSwitch[eepromShadowCurrentProfile]);
+	eepromShadowOverridePropAsSwitch = eeprom_read_byte(&eepromPropAsSwitch[PROFILE_COUNT-1]);
+
 	eepromShadowInvert = eeprom_read_byte(&eepromInvert[eepromShadowCurrentProfile]);
+	eepromShadowOverrideInvert = eeprom_read_byte(&eepromInvert[PROFILE_COUNT-1]);
 }
 
 void incrementWirelessTimeout()
@@ -206,7 +245,7 @@ uint8_t menuGetIsPlatformDown() {
 float menuGetFwdThrow(uint8_t overridden)
 {
 	if (overridden)
-		return 0.8;
+		return eepromShadowOverrideFwdThrow;
 	else
 		return eepromShadowFwdThrow;
 }
@@ -214,7 +253,7 @@ float menuGetFwdThrow(uint8_t overridden)
 float menuGetRevThrow(uint8_t overridden)
 {
 	if (overridden)
-		return 0.6;
+		return eepromShadowOverrideRevThrow;
 	else
 		return eepromShadowRevThrow;
 }
@@ -222,7 +261,7 @@ float menuGetRevThrow(uint8_t overridden)
 float menuGetTurnThrow(uint8_t overridden)
 {
 	if (overridden)
-		return 0.4;
+		return eepromShadowOverrideTurnThrow;
 	else
 		return eepromShadowTurnThrow;
 }
@@ -230,7 +269,7 @@ float menuGetTurnThrow(uint8_t overridden)
 uint8_t menuGetTopFwdSpeed(uint8_t overridden)
 {
 	if (overridden)
-		return 125;
+		return eepromShadowOverrideTopFwdSpeed;
 	else
 		return eepromShadowTopFwdSpeed;
 }
@@ -238,7 +277,7 @@ uint8_t menuGetTopFwdSpeed(uint8_t overridden)
 uint8_t menuGetTopRevSpeed(uint8_t overridden)
 {
 	if (overridden)
-		return 60;
+		return eepromShadowOverrideTopRevSpeed;
 	else
 		return eepromShadowTopRevSpeed;
 }
@@ -246,7 +285,7 @@ uint8_t menuGetTopRevSpeed(uint8_t overridden)
 uint8_t menuGetTopTurnSpeed(uint8_t overridden)
 {
 	if (overridden)
-		return 45;
+		return eepromShadowOverrideTopTurnSpeed;
 	else
 		return eepromShadowTopTurnSpeed;
 }
@@ -254,7 +293,7 @@ uint8_t menuGetTopTurnSpeed(uint8_t overridden)
 double menuGetSensitivity(uint8_t overridden)
 {
 	if (overridden)
-		return 0.005;
+		return gSensitivityMap[eepromShadowOverrideSensitivity];
 	else
 		return gSensitivityMap[eepromShadowSensitivity];
 }
@@ -262,7 +301,7 @@ double menuGetSensitivity(uint8_t overridden)
 uint8_t menuGetAcceleration(uint8_t overridden)
 {
 	if (overridden)
-		return 16;
+		return eepromShadowOverrideAcceleration;
 	else
 		return eepromShadowAcceleration;
 }
@@ -270,7 +309,7 @@ uint8_t menuGetAcceleration(uint8_t overridden)
 uint8_t menuGetDeceleration(uint8_t overridden)
 {
 	if (overridden)
-		return 12;
+		return eepromShadowOverrideDeceleration;
 	else
 		return eepromShadowDeceleration;
 }
@@ -278,7 +317,7 @@ uint8_t menuGetDeceleration(uint8_t overridden)
 uint8_t menuGetOuterDeadBand(uint8_t overridden)
 {
 	if (overridden)
-		return 0;
+		return eepromShadowOverrideOuterDeadBand;
 	else
 		return eepromShadowOuterDeadBand;
 }
@@ -286,7 +325,7 @@ uint8_t menuGetOuterDeadBand(uint8_t overridden)
 uint8_t menuGetCenterDeadBand(uint8_t overridden)
 {
 	if (overridden)
-		return 2;
+		return eepromShadowOverrideCenterDeadBand;
 	else
 		return eepromShadowCenterDeadBand;
 }
@@ -294,7 +333,7 @@ uint8_t menuGetCenterDeadBand(uint8_t overridden)
 uint8_t menuGetPropAsSwitch(uint8_t overridden)
 {
 	if (overridden)
-		return 0;
+		return eepromShadowOverridePropAsSwitch;
 	else
 		return eepromShadowPropAsSwitch;
 }
@@ -302,7 +341,7 @@ uint8_t menuGetPropAsSwitch(uint8_t overridden)
 uint8_t menuGetInvert(uint8_t overridden)
 {
 	if (overridden)
-		return 0;
+		return eepromShadowOverrideInvert;
 	else
 		return eepromShadowInvert;
 }
@@ -599,6 +638,10 @@ void menuUpdate(int16_t speed, int16_t dir)
 		lcdLine1[0] = '\0';
 		lcdLine2[0] = '\0';
 		break;
+	}
+
+	if ((up || down) && eepromShadowCurrentProfile == PROFILE_COUNT - 1) {
+		menuInit();
 	}
 
 	//if (eepromShadowMenuState != MENU_OPTION_PROFILE) {
