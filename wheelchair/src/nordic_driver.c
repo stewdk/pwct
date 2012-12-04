@@ -308,9 +308,17 @@ int8_t nordic_getInstructorDirection()
 
 static void setVariables(uint8_t isTimeout)
 {
+	static uint8_t eStopCount = 0;
 	if ((LAST_PACKET.data.array[0] & 0b00000001) >> 0 ) {
-		gInstructorEStop = 1;
+		if (eStopCount < 1) {
+			eStopCount++;
+		} else {
+			gInstructorEStop = 1;
+		}
+	} else if (LAST_PACKET.rxpipe == RXPIPE_INSTRUCTOR_REMOTE) {
+		eStopCount = 0;
 	}
+
 	if (LAST_PACKET.rxpipe == RXPIPE_INSTRUCTOR_REMOTE) {
 		gInstructorLAUp = (    (LAST_PACKET.data.array[0] & 0b00000010) >> 1 );
 		gInstructorLADown = (  (LAST_PACKET.data.array[0] & 0b00000100) >> 2 );
