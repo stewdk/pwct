@@ -65,7 +65,7 @@ int main(void)
 	sei();
 
 	initHardware();
-	nordic_Initialize(0);
+	nordic_Initialize();
 
 	while(1) {
 		sendData();

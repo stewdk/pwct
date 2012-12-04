@@ -83,19 +83,11 @@ static inline int8_t nordic_ReadRegisters(uint8_t reg, uint8_t *data, uint8_t si
 static inline void setDirTx(void)
 {
 	standbyMode();
-	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; TX mode; PWR_UP bit set
-	nordic_WriteRegister(CONFIG_nReg, 0x0A, NULL);
+	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled, two CRC bytes; TX mode; PWR_UP bit set
+	nordic_WriteRegister(CONFIG_nReg, 0x0E, NULL);
 }
 
-static inline void setDirRx(void)
-{
-	standbyMode();
-	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; RX mode; PWR_UP bit set
-	nordic_WriteRegister(CONFIG_nReg, 0x0B, NULL);
-	activeMode();
-}
-
-int8_t nordic_Initialize(uint8_t receiver)
+int8_t nordic_Initialize()
 {
 	uint8_t configRegValue;
 	uint8_t datas[10];
@@ -104,19 +96,15 @@ int8_t nordic_Initialize(uint8_t receiver)
 	initalizeHardwareForNordic();
 
 	//Initialize Nordic nRF24L01+
-	if (receiver) {
-		configRegValue = 0x09;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; RX mode
-	} else {
-		configRegValue = 0x08;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; TX mode
-	}
+	configRegValue = 0x0C;	//RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled, two CRC bytes; TX mode
 	err = nordic_WriteRegister(CONFIG_nReg, configRegValue, NULL);
 
 	//enable auto acknowledge on pipe 0 and 1
 	err = nordic_WriteRegister(EN_AA_nReg, 0x03, NULL);
 
 #ifdef INSTRUCTOR_REMOTE
-	//enable auto retransmit, try 13 times with delay of 250us
-	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x0D, NULL);
+	//enable auto retransmit, try 5 times with delay of 500us
+	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x15, NULL);
 #else //STUDENT_JOYSTICK
 	//enable auto retransmit, try 1 time with delay of 2500us
 	err = nordic_WriteRegister(SETUP_RETR_nReg, 0x91, NULL);
@@ -129,8 +117,8 @@ int8_t nordic_Initialize(uint8_t receiver)
 	//Set RF Channel as 0x7C
 	err = nordic_WriteRegister(RF_CH_nReg, 0x7C, NULL);
 
-	//Set output power 0dB, data rate of 1Mbps
-	err = nordic_WriteRegister(RF_SETUP_nReg, 0x07, NULL);
+	//Set output power 0dB, data rate of 250kbps
+	err = nordic_WriteRegister(RF_SETUP_nReg, 0x27, NULL);
 
 	//Rx Address data pipe 0
 	//ACK comes in on RX data pipe 0
@@ -190,10 +178,6 @@ int8_t nordic_Initialize(uint8_t receiver)
 
 	//wait for startup
 	_delay_us(1500);
-
-	if (receiver) {
-		activeMode();	//start receiving
-	}
 
 	return err;
 }

@@ -177,7 +177,7 @@ static void nordicSetup()
 	uint8_t datas[10];
 	uint8_t configRegValue;
 
-	configRegValue = 0x09;  //RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled; RX mode
+	configRegValue = 0x0D;  //RX_DR, TX_DS, MAX_RT on IRQ; CRC enabled, two CRC bytes; RX mode
 	nordic_WriteRegister(CONFIG_nReg, configRegValue, NULL);
 
 	//enable auto acknowledge on pipe 0 and 1
@@ -192,8 +192,8 @@ static void nordicSetup()
 	//Set RF Channel as 0x7C
 	nordic_WriteRegister(RF_CH_nReg, 0x7C, NULL);
 
-	//Set output power 0dB, data rate of 1Mbps
-	nordic_WriteRegister(RF_SETUP_nReg, 0x07, NULL);
+	//Set output power 0dB, data rate of 250kbps
+	nordic_WriteRegister(RF_SETUP_nReg, 0x27, NULL);
 
 	//Rx Address data pipe 0
 	datas[0] = 0xE7;

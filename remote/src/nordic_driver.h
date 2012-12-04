@@ -69,7 +69,7 @@ typedef struct {
 	uint8_t rxpipe;
 } NORDIC_PACKET;
 
-int8_t nordic_Initialize(uint8_t receiver);
+int8_t nordic_Initialize();
 void nordic_TransmitData(NORDIC_PACKET * packet);
 
 //nordic_IRQ() is called from an ISR in nordic_hardware_specific.c
