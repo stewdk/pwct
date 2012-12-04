@@ -107,6 +107,19 @@ inline void tglLED(void)
 	}
 }
 
+// Turns the LED on only after a 0.25 delay
+static volatile uint8_t gLEDDelayOn = 0;
+void setLEDDelay()
+{
+	gLEDDelayOn = 1;
+}
+
+// Turns the LED off immediately and resets the LED delay
+void clrLEDDelay()
+{
+	gLEDDelayOn = 0;
+}
+
 uint8_t getADC5(void)
 {
 	return valueADC5;	// Left/Right
@@ -170,6 +183,7 @@ ISR(ADC_vect)
 // Debounce timer ISR
 ISR(TIMER0_COMPA_vect)
 {
+	static uint8_t ledOnCount = 0;
 	int i;
 	for (i = 0; i < DEBOUNCED_INPUT_COUNT; i++)
 	{
@@ -183,6 +197,17 @@ ISR(TIMER0_COMPA_vect)
 		{
 			gDebouncedInputs[i].debounced_value = 0;
 		}
+	}
+
+	if (gLEDDelayOn) {
+		if (ledOnCount < 50) {
+			ledOnCount++;
+		} else {
+			setLED();
+		}
+	} else {
+		clrLED();
+		ledOnCount = 0;
 	}
 }
 #endif // INSTRUCTOR_REMOTE

@@ -41,6 +41,8 @@ void initHardware(void);
 void setLED(void);
 void clrLED(void);
 void tglLED(void);
+void setLEDDelay();
+void clrLEDDelay();
 #ifdef STUDENT_JOYSTICK
 uint8_t isJoystickEnabled();
 uint8_t getBuddyButtons();

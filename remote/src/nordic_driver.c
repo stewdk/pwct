@@ -232,9 +232,9 @@ inline uint8_t nordic_IRQ(void)
 	}
 	if (status & 0x10) { // Maximum number of TX retransmits
 		nordic_SendCommand(FLUSH_TX_nCmd, NULL, NULL, 0, NULL);
-		setLED();
+		setLEDDelay();
 	} else {
-		clrLED();
+		clrLEDDelay();
 	}
 
 	//clear interrupts
