@@ -33,6 +33,7 @@ static void setupDebouncedInputs()
 		gDebouncedInputs[i].debounced_value = 1;
 	}
 }
+#endif // INSTRUCTOR_REMOTE
 
 static void setupDebounceTimer()
 {
@@ -49,7 +50,6 @@ static void setupDebounceTimer()
 	//TIMSK: OCIE1D OCIE1A OCIE1B OCIE0A OCIE0B TOIE1 TOIE0 TICIE0
 	TIMSK |= _BV(OCIE0A);
 }
-#endif // INSTRUCTOR_REMOTE
 
 void initHardware(void)
 {
@@ -68,8 +68,8 @@ void initHardware(void)
 
 #ifdef INSTRUCTOR_REMOTE
 	setupDebouncedInputs();
-	setupDebounceTimer();
 #endif // INSTRUCTOR_REMOTE
+	setupDebounceTimer();
 
 //INIT ADC
 	// ADMUX = REFS1:0 ADLAR MUX4:0
@@ -179,11 +179,11 @@ ISR(ADC_vect)
 	ADCSRA |= _BV(ADSC); //Start conversion
 }
 
-#ifdef INSTRUCTOR_REMOTE
 // Debounce timer ISR
 ISR(TIMER0_COMPA_vect)
 {
 	static uint8_t ledOnCount = 0;
+#ifdef INSTRUCTOR_REMOTE
 	int i;
 	for (i = 0; i < DEBOUNCED_INPUT_COUNT; i++)
 	{
@@ -198,6 +198,7 @@ ISR(TIMER0_COMPA_vect)
 			gDebouncedInputs[i].debounced_value = 0;
 		}
 	}
+#endif // INSTRUCTOR_REMOTE
 
 	if (gLEDDelayOn) {
 		if (ledOnCount < 50) {
@@ -210,4 +211,3 @@ ISR(TIMER0_COMPA_vect)
 		ledOnCount = 0;
 	}
 }
-#endif // INSTRUCTOR_REMOTE
