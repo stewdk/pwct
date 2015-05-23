@@ -1,0 +1,3 @@
+Occasionally, the LCD screen would go blank while using the linear actuators.  It has been determined that this is due to electromagnetic interference (EMI).  The MOSFET half-bridge driver requires a PWM signal in order to turn on the top MOSFET. This results in high-current switching causing lots of EMI.  This EMI is picked up by the LCD wiring, occasionally causing the LCD to go blank.
+
+To fix this issue, simply run the LCD wires through a ferrite bead.
